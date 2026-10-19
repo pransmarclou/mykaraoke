@@ -2,24 +2,31 @@
 
 ## Implementation status
 
-As of 2026-10-18, Phase 5 local song discovery and queue are implemented. A
+As of 2026-10-19, Phase 7 local lifecycle and recovery work is implemented,
+but its broad browser/deployment verification is pending. A
 host can create a 24-hour room and invite guests. Guests can join, search
 server-verified YouTube metadata when an API key is configured, assign a singer,
 and add to a shared queue. Host-only order, skip, and remove actions are backed
 by transactions; Supabase Realtime invalidations plus snapshot polling keep
-devices reconciled. A live local YouTube search smoke check passed. Playback,
-microphones, accounts, and payments are not implemented. See `memory.md` for
+devices reconciled. A paired TV browser can play through the official YouTube
+IFrame API while the host starts, pauses, resumes, and skips. A live desktop
+player smoke check passed with an official sample video; two karaoke results
+returned YouTube embed error 150, and physical TVs remain untested.
+Room expiry warnings, terminal states, snapshot reconciliation, safe retries,
+queue-write limits, and a server-only cleanup command are implemented locally.
+Microphones, accounts, and payments are not implemented. See `memory.md` for
 verification and `build-phases.md` for the next gate.
 
 ## Product summary
 
-MyKaraoke is a premium, web-first karaoke party platform by Nook Studio. A host
-creates a room on a laptop, desktop, phone, or compatible TV browser. Guests
-join with a QR code, link, or short room code without installing an app or
-creating an account. Guests search for supported YouTube karaoke videos, join
-the party, and add performances to a synchronized queue. A dedicated playback
-device shows the current performance while the host retains administrative
-control.
+MyKaraoke has two sequential product stages. First, a complete web MVP works
+across supported phone, laptop, and TV browsers: a host creates a room, guests
+join without installing an app or creating an account, and a designated browser
+plays the party's YouTube videos. Only after the web MVP is finished will
+MyKaraoke build iOS and Android apps as the primary personal interface. In the
+future app-first flow, the web big-screen display shows a pairing QR that the
+host scans with the installed app; the app handles party actions while the web
+browser remains the display. Native subscriptions are a later, separate gate.
 
 **Tagline:** Your songs. Your stage. Your party.
 
@@ -30,7 +37,7 @@ WebRTC.
 
 ## Product outcomes
 
-The product succeeds when a new group can:
+The web MVP succeeds when a new group can:
 
 1. Open MyKaraoke in a normal browser.
 2. Create a secure, temporary room without an account.
@@ -41,6 +48,13 @@ The product succeeds when a new group can:
    controls the party.
 7. Recover from common refreshes and brief network interruptions.
 8. Connect a supported local microphone and understand any device limitations.
+
+The later native stage succeeds when the same group can use installed iOS and
+Android apps for approved host/guest features, scan a one-time QR shown by the
+web display to pair the big screen, and optionally subscribe to clearly
+defined Pro features. App installation must not be required during the web
+MVP; any later mandatory-app transition requires owner approval after parity
+and real-device verification.
 
 ## Users and surfaces
 
@@ -62,6 +76,15 @@ Runs a low-distraction fullscreen experience with the YouTube player, current
 singer, next singer, playback-recovery prompts, and brief party reactions. It
 shares room state but does not use mobile navigation or implicitly receive host
 authority.
+
+### Later native app
+
+The installed iOS/Android app becomes the personal host/guest interface after
+the web MVP. It will use native camera, account recovery, microphone, and store
+purchase capabilities where approved. The web display remains a separate,
+low-privilege playback surface. The current host-generated code entered on
+`/tv/[code]` is a web-MVP pairing method; the app-scanned, display-generated
+QR is a later handoff flow, not an already implemented feature.
 
 ## Planned routes
 
@@ -92,7 +115,8 @@ be created before its behavior is implemented.
 - **Realtime:** durable events, ephemeral presence, reconnection, idempotency
 - **Party:** rotation, duets, reactions, themes, favorites
 - **Security:** RLS, signed sessions, validation, rate limits, cleanup
-- **Platform:** PWA shell, accessibility, compatibility, deployment, telemetry
+- **Platform:** cross-browser web, accessibility, compatibility, deployment,
+  telemetry, and later native clients
 
 ## Architecture direction
 
@@ -114,6 +138,14 @@ extracting or combining the YouTube audio stream.
 Remote microphone audio is a later WebRTC system. Supabase may carry scoped
 signaling metadata, but audio travels peer-to-peer or through approved WebRTC
 infrastructure with STUN/TURN as needed.
+
+Native clients will reuse server-authoritative room, queue, playback, and
+entitlement rules through authenticated APIs, not browser cookies. A future
+web display will mint an expiring one-use QR claim; an authenticated host app
+scans and confirms it, and the backend binds only display authority to the
+room. App identity, display pairing, and purchase identity must remain
+separate. The native framework and account migration strategy are not chosen
+until the N1 discovery gate.
 
 ## Initial data model direction
 
@@ -137,8 +169,11 @@ and RLS denying direct client access; the server checks each private host or
 guest credential before returning room data. Phase 5 added search cache and
 quota tables plus `queue_items` and a private Realtime queue topic. The queue
 is server-authoritative; the browser receives only invalidations and refetches
-authenticated snapshots. The remaining tables belong to the phases that first
-use them.
+authenticated snapshots. Phase 6 added `playback_state`, short-lived pairing
+codes, a rotating designated-device credential, and idempotent host command
+records. The remaining tables belong to the phases that first use them.
+Phase 7 added a private queue-mutation budget table and an idempotent cleanup
+command; its hourly hosted schedule remains deployment work.
 
 ## UI and brand direction
 
@@ -181,9 +216,11 @@ use them.
 
 ## Monetization and paywall direction
 
-The functional karaoke MVP remains usable without payment. A later dedicated
-phase will add an explicit Free/Pro entitlement model and paywall after the core
-party experience is reliable.
+The complete web MVP remains usable without payment. Optional subscriptions
+belong to the later native N4 phase, after the app's core party and display
+handoff work. Downloading the app and paying for Pro are separate actions:
+ordinary parties remain free unless the owner explicitly revises the Free/Pro
+matrix after policy review.
 
 - Free access retains room creation, QR joining, YouTube search, shared queue,
   basic host controls, basic local microphone controls, the standard theme, and
@@ -196,11 +233,16 @@ party experience is reliable.
   back to the party.
 - UI visibility is not authorization. Server-side entitlements must protect
   premium mutations and resources.
-- Pricing, trials, billing provider, cancellation, restoration, receipts,
-  taxes, refunds, and account requirements remain open decisions.
+- Native iOS and Android store-billing integration, pricing, trials,
+  cancellation, restoration, receipts, taxes, refunds, and durable account
+  requirements remain open decisions for N4.
 - YouTube-backed capabilities must be reviewed against current YouTube terms
   before they are sold. MyKaraoke must never promise advertisement-free
-  YouTube playback.
+  YouTube playback or require a subscription merely to view an embedded video.
+- Recheck [Apple App Review](https://developer.apple.com/app-store/review/guidelines/),
+  [Google Play payments](https://support.google.com/googleplay/android-developer/answer/10281818),
+  and [YouTube developer policies](https://developers.google.com/youtube/terms/developer-policies)
+  at implementation time; platform rules and regional exceptions can change.
 
 ## Quality attributes
 
@@ -232,6 +274,6 @@ A slice is complete only when all of the following are true:
 - Multiple remote microphone streams
 - Karaoke scoring
 - Performance recording
-- Payments, subscriptions, and the paywall
+- Payments, subscriptions, and the paywall (deferred to native N4)
 - Native mobile or TV applications
 - Claims of universal smart-TV or wireless-audio compatibility

@@ -3,12 +3,21 @@
 **Your songs. Your stage. Your party.**
 
 MyKaraoke is a web-first karaoke party platform by Nook Studio. The current
-Phase 5 slice lets a host create a temporary room, guests join, and everyone
+Phase 7 implementation lets a host create a temporary room, guests join, and everyone
 see a shared roster and song queue. With a server YouTube API key, guests can
 search for embeddable karaoke videos, assign a singer, and add up to three
-active songs. The host can reorder, skip, or remove entries. A live local
-YouTube search has passed; playback, microphone, and payment features are planned in
+active songs. The host can reorder, skip, or remove entries. A paired TV/browser
+can play through the official YouTube player while the host controls playback.
+Live local search and a desktop sample-video playback check passed. Lifecycle
+recovery is implemented locally but broad release verification is pending;
+microphones and payments are planned in
 [the functional build phases](Docs/build-phases.md).
+
+Delivery order: finish a usable browser MVP for phones, laptops, and supported
+TV browsers first. Later, installed iOS/Android apps become the main personal
+party interface, with a QR shown on the web big screen for the app to scan.
+Native subscriptions come after the app and screen handoff work; no app
+download or payment is required in the current web MVP.
 
 ## Run locally
 
@@ -43,8 +52,9 @@ UI explicitly reports that search is unconfigured without it. Search uses
 `search.list` and `videos.list`, verifies public/embeddable metadata, caches a
 query for 15 minutes, and limits uncached searches to 50/day locally. A result
 is eligible to queue for six hours. Search-result flags are not a guarantee
-that an embed will play on every device or in every region; that check belongs
-to the playback phase. The API key must never use a `NEXT_PUBLIC_` prefix.
+that an embed will play on every device or in every region; the TV surfaces
+player errors and the host can skip. The API key must never use a
+`NEXT_PUBLIC_` prefix.
 
 ## Verify
 
@@ -57,15 +67,25 @@ npm run test:integration
 npx playwright install chromium
 npm run test:e2e
 supabase db lint --local
+# Optional, with network access: LIVE_PLAYER_CHECK=1 npx playwright test tests/e2e/live-player.spec.ts --project=desktop-chromium
 ```
 
 Integration tests require the local database and Realtime service with
 `.env.local` configured. Playwright checks multi-context guest search and
 queueing with clearly seeded YouTube metadata fixtures, host ordering, guest
-authorization denial, room creation/joining, roster recovery, small-screen
-overflow, and automated WCAG A/AA rules. A separate manual live local YouTube
-search returned results. Physical-phone QR scanning, real network interruption,
-hosted-domain joining, playback, and microphone behavior are not claimed as tested.
+authorization denial, TV pairing, simulated player events, room creation/joining,
+roster recovery, small-screen overflow, and automated WCAG A/AA rules. A
+separate opt-in check played the official YouTube IFrame API sample in desktop
+Chromium on a paired browser context. Physical-phone QR scanning, real network
+interruption, hosted-domain joining, smart-TV playback, and microphones remain
+untested.
+
+Phase 7 adds a host/two-guests/TV browser journey with emulated offline/online
+recovery, independent reloads, and host closure. That isolated journey passed
+in desktop and mobile Chromium. The longer full browser run hit intermittent
+local 503s and must pass before the release gate. Confirm `DATABASE_URL` points
+to the local Supabase database before tests or migrations; do not migrate an
+unrelated hosted project.
 
 ## Room security and lifecycle
 
@@ -82,9 +102,18 @@ limit is 100/hour for the loopback preview. A deployed app requires a trusted
 proxy-provided client-IP header and a private HMAC secret before creation is
 enabled; its limit is 20/hour per client address. Join attempts have a separate
 database-backed limit (300/hour locally; 60/hour per address when deployed).
-Configure the proxy settings only after
-the hosting proxy is chosen and verified. Hosted Supabase setup and a scheduled
-cleanup job remain separate deployment work.
+Configure the proxy settings only after the hosting proxy is chosen and
+verified. Queue writes are additionally limited to 12 per guest or 40 per
+host per minute; failed version conflicts do not consume a slot.
+
+`npm run cleanup:rooms` marks expired rooms closed, revokes host sessions and
+TV pairing authority, removes stale presence/attempt counters, and purges
+rooms seven days after expiry. It must run with a server-only `DATABASE_URL`;
+schedule it hourly in the eventual nonproduction/production environment. The
+script is implemented, but no hosted scheduler or MyKaraoke-specific hosted
+Supabase project has been configured or verified. The CLI refuses a hosted
+database unless `MYKARAOKE_CLEANUP_DB_HOST` matches its exact hostname, so
+the configured database must be checked before scheduling it.
 
 ## Guest presence and host departure
 
@@ -115,9 +144,20 @@ active, and can hold at most three active entries.
 Supabase Realtime broadcasts only a queue-version invalidation on a private
 random room topic. A checked server route gives room members that topic; the
 client then refetches the authenticated queue snapshot. Three-second polling
-and online-event refresh reconcile missed WebSocket events. The queue is not
-playback: skip currently removes an entry from the upcoming list; no video is
-started or advanced yet.
+and online-event refresh reconcile missed WebSocket events. Upcoming-queue
+skip removes an entry; playback skip advances the active song.
+
+## TV playback
+
+The host generates an eight-character TV pairing code and opens `/tv/[code]` on
+the playback browser. Entering the code gives that browser a private HttpOnly
+device session; pairing a new display revokes the prior one. The host starts a
+queued song and may pause, resume, or skip. The TV must press **Start video**
+when the browser requires a user gesture. The TV reports actual player events;
+server transactions advance the queue on end or host skip. Guests see the
+current and next singer without receiving playback authority. Some videos
+reject embedding even after the Data API reports them eligible; the TV shows
+the error and asks the host to skip. A physical smart TV has not been tested.
 
 ## Project context
 

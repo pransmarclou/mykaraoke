@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { normalizeRoomCode } from "@/lib/rooms/room-code-format";
 
 export function JoinForm({ initialCode = "" }: { initialCode?: string }) {
-  const router = useRouter();
   const [code, setCode] = useState(initialCode);
   const [displayName, setDisplayName] = useState("");
   const [pending, setPending] = useState(false);
@@ -28,8 +26,9 @@ export function JoinForm({ initialCode = "" }: { initialCode?: string }) {
         setError(result.error ?? "Could not join this room. Try again.");
         return;
       }
-      router.push(`/room/${result.code}`);
-      router.refresh();
+      // The HttpOnly cookie changed; load the authenticated RSC directly rather than racing push() with refresh().
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(`/room/${result.code}`);
     } catch {
       setError("Connection lost. Check your network and try again.");
     } finally {

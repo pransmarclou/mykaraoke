@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "tsx --test tests/unit/*.test.ts",
     "test:integration": "node --env-file=.env.local --import tsx --test tests/integration/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "cleanup:rooms": "node --env-file=.env.local --import tsx scripts/cleanup-rooms.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { createClient, type SupabaseClient, type RealtimeChannel } from "@supabase/supabase-js";
 import { ArrowDown, ArrowUp, ListMusic, Music2, Search, Trash2 } from "lucide-react";
@@ -34,46 +34,72 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
   const [singerName, setSingerName] = useState(singer);
   const [searchState, setSearchState] = useState<SearchState>({ status: "idle", songs: [] });
   const [workingId, setWorkingId] = useState<string | null>(null);
+  const pendingAdds = useRef(new Map<string, string>());
 
   useEffect(() => {
     let active = true;
+    let terminal = false;
     let realtimeClient: SupabaseClient | undefined;
     let realtimeChannel: RealtimeChannel | undefined;
+    let retryTimer: number | undefined;
+    let retryCount = 0;
+    let connecting = false;
     async function refresh() {
+      if (terminal) return;
       try {
         const response = await fetch(`/api/rooms/${code}/queue`, { cache: "no-store" });
         if (!active) return;
-        if ([403, 404, 410].includes(response.status)) { setQueueState("ended"); return; }
+        if ([403, 404, 410].includes(response.status)) { terminal = true; if (retryTimer) window.clearTimeout(retryTimer); const client = realtimeClient; const channel = realtimeChannel; if (client && channel) { void client.removeChannel(channel); void client.realtime.disconnect(); } setQueue(emptyQueue); setQueueState("ended"); setSearchState({ status: "idle", songs: [] }); return; }
         if (!response.ok) throw new Error("Queue unavailable");
         const snapshot = await response.json() as QueueSnapshot;
-        if (active) { setQueue(snapshot); setQueueState("connected"); }
-      } catch { if (active) setQueueState("reconnecting"); }
+        if (active && !terminal) { setQueue((current) => snapshot.version >= current.version ? snapshot : current); setQueueState("connected"); }
+      } catch { if (active && !terminal) setQueueState("reconnecting"); }
     }
     void refresh();
+    function scheduleRealtimeRetry() {
+      if (!active || terminal || retryTimer !== undefined) return;
+      const delay = Math.min(30_000, 1_000 * 2 ** Math.min(retryCount++, 5));
+      retryTimer = window.setTimeout(() => { retryTimer = undefined; void subscribe(); }, delay);
+    }
     async function subscribe() {
+      if (!active || terminal || connecting || realtimeChannel) return;
+      connecting = true;
       try {
         const response = await fetch(`/api/rooms/${code}/queue/realtime`, { cache: "no-store" });
-        if (!response.ok || !active) return;
+        if (!response.ok) throw new Error("Realtime config unavailable");
+        if (!active || terminal) return;
         const config = await response.json() as { enabled: boolean; url?: string; key?: string; topic?: string };
         if (!active || !config.enabled || !config.url || !config.key || !config.topic) return;
-        realtimeClient = createClient(config.url, config.key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-        await realtimeClient.realtime.setAuth(config.key);
-        if (!active) return;
-        realtimeChannel = realtimeClient.channel(config.topic, { config: { private: true } })
+        const client = createClient(config.url, config.key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: `mk-queue-${code}-${crypto.randomUUID()}` } });
+        await client.realtime.setAuth(config.key);
+        if (!active || terminal) { void client.realtime.disconnect(); return; }
+        const channel = client.channel(config.topic, { config: { private: true } })
           .on("broadcast", { event: "queue_changed" }, () => void refresh())
-          .subscribe((status) => { if (status === "SUBSCRIBED") void refresh(); });
-      } catch { /* Snapshot polling remains the recovery path. */ }
+          .subscribe((status) => {
+            if (status === "SUBSCRIBED") { retryCount = 0; void refresh(); }
+            else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status) && realtimeChannel === channel) {
+              realtimeChannel = undefined;
+              realtimeClient = undefined;
+              void client.removeChannel(channel);
+              void client.realtime.disconnect();
+              scheduleRealtimeRetry();
+            }
+          });
+        realtimeClient = client;
+        realtimeChannel = channel;
+      } catch { scheduleRealtimeRetry(); /* Snapshot polling remains the recovery path. */ }
+      finally { connecting = false; }
     }
     void subscribe();
     const timer = window.setInterval(() => void refresh(), 3_000);
-    const online = () => void refresh();
+    const online = () => { void refresh(); if (!realtimeChannel) { if (retryTimer) window.clearTimeout(retryTimer); retryTimer = undefined; void subscribe(); } };
     window.addEventListener("online", online);
-    return () => { active = false; window.clearInterval(timer); window.removeEventListener("online", online); if (realtimeClient && realtimeChannel) void realtimeClient.removeChannel(realtimeChannel); };
+    return () => { active = false; window.clearInterval(timer); if (retryTimer) window.clearTimeout(retryTimer); window.removeEventListener("online", online); const client = realtimeClient; const channel = realtimeChannel; if (client && channel) { void client.removeChannel(channel); void client.realtime.disconnect(); } };
   }, [code]);
 
   useEffect(() => {
     const normalized = query.normalize("NFKC").replace(/\s+/gu, " ").trim();
-    if (normalized.length < 2) return;
+    if (normalized.length < 2 || queueState === "ended") return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setSearchState({ status: "loading", songs: [] });
@@ -85,32 +111,39 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
       } catch { if (!controller.signal.aborted) setSearchState({ status: "error", songs: [], message: "Search is unavailable. Check your connection and try again." }); }
     }, 500);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [code, query]);
+  }, [code, query, queueState]);
 
   async function add(song: SongResult) {
+    if (queueState !== "connected") return;
     setQueueMessage("");
     setWorkingId(song.id);
+    const requestKey = pendingAdds.current.get(song.id) ?? crypto.randomUUID();
+    pendingAdds.current.set(song.id, requestKey);
     try {
       const response = await fetch(`/api/rooms/${code}/queue`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ searchResultId: song.id, singerName, requestKey: crypto.randomUUID() }),
+        body: JSON.stringify({ searchResultId: song.id, singerName, requestKey }),
       });
-      if (!response.ok) { setQueueMessage(await responseError(response)); return; }
-      setQueue(await response.json() as QueueSnapshot);
+      if (!response.ok) { pendingAdds.current.delete(song.id); setQueueMessage(await responseError(response)); return; }
+      const snapshot = await response.json() as QueueSnapshot;
+      setQueue((current) => snapshot.version >= current.version ? snapshot : current);
+      pendingAdds.current.delete(song.id);
       setQueueMessage(`${song.title} added to the queue.`);
     } catch { setQueueMessage("Could not add this song. Check your connection and retry."); }
     finally { setWorkingId(null); }
   }
 
   async function change(id: string, action: "up" | "down" | "remove" | "skip") {
+    if (queueState !== "connected") return;
     setQueueMessage(""); setWorkingId(id);
     try {
       const response = await fetch(`/api/rooms/${code}/queue/${id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, expectedVersion: queue.version }),
       });
-      if (!response.ok) { setQueueMessage(await responseError(response)); return; }
-      setQueue(await response.json() as QueueSnapshot);
+      if (!response.ok) { setQueueMessage(await responseError(response)); if (response.status === 409) void fetch(`/api/rooms/${code}/queue`, { cache: "no-store" }).then(async (latest) => { if (latest.ok) { const snapshot = await latest.json() as QueueSnapshot; setQueue((current) => snapshot.version >= current.version ? snapshot : current); } }).catch(() => {}); return; }
+      const snapshot = await response.json() as QueueSnapshot;
+      setQueue((current) => snapshot.version >= current.version ? snapshot : current);
       setQueueMessage(action === "remove" ? "Song removed." : action === "skip" ? "Song skipped." : "Queue order updated.");
     } catch { setQueueMessage("Could not update the queue. Check your connection and retry."); }
     finally { setWorkingId(null); }
@@ -122,19 +155,19 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
     {queueState === "reconnecting" ? <p role="status" className="mt-5 text-sm text-[#ffc16f]">Queue connection interrupted. Reconnecting…</p> : null}
     {queueState === "ended" ? <p role="alert" className="mt-5 text-sm text-[#ffb0a2]">This room ended or your access expired.</p> : null}
     {queueState === "connected" && queue.items.length === 0 ? <p className="mt-5 text-sm text-muted-foreground">No songs yet. Search for a karaoke video and add the first one.</p> : null}
-    <ol className="mt-5 space-y-3" data-testid="queue-list">{queue.items.map((item, index) => <li key={item.id} data-testid="queue-item" className="rounded-xl border border-white/10 bg-white/5 p-4">
+    <ol className="mt-5 space-y-3" data-testid="queue-list">{queueState !== "ended" ? queue.items.map((item, index) => <li key={item.id} data-testid="queue-item" className="rounded-xl border border-white/10 bg-white/5 p-4">
       <div className="flex items-center gap-3"><span className="font-mono text-sm font-bold text-[#ffc16f]">{index + 1}.</span><SongThumbnail youtubeId={item.youtubeId} /><div className="min-w-0 flex-1"><p className="font-semibold text-white">{item.title}</p><p className="mt-1 text-sm text-muted-foreground">{item.singerName} · {item.channelTitle} · {duration(item.durationSeconds)}</p></div></div>
-      {role === "host" ? <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3"><button type="button" aria-label={`Move ${item.title} up`} disabled={index === 0 || workingId !== null} onClick={() => void change(item.id, "up")} className="queue-action"><ArrowUp className="size-4" aria-hidden="true" /> Up</button><button type="button" aria-label={`Move ${item.title} down`} disabled={index === queue.items.length - 1 || workingId !== null} onClick={() => void change(item.id, "down")} className="queue-action"><ArrowDown className="size-4" aria-hidden="true" /> Down</button><button type="button" aria-label={`Skip ${item.title}`} disabled={workingId !== null} onClick={() => void change(item.id, "skip")} className="queue-action">Skip</button><button type="button" aria-label={`Remove ${item.title}`} disabled={workingId !== null} onClick={() => void change(item.id, "remove")} className="queue-action"><Trash2 className="size-4" aria-hidden="true" /> Remove</button></div> : null}
-    </li>)}</ol>
+      {role === "host" ? <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3"><button type="button" aria-label={`Move ${item.title} up`} disabled={index === 0 || workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "up")} className="queue-action"><ArrowUp className="size-4" aria-hidden="true" /> Up</button><button type="button" aria-label={`Move ${item.title} down`} disabled={index === queue.items.length - 1 || workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "down")} className="queue-action"><ArrowDown className="size-4" aria-hidden="true" /> Down</button><button type="button" aria-label={`Skip ${item.title}`} disabled={workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "skip")} className="queue-action">Skip</button><button type="button" aria-label={`Remove ${item.title}`} disabled={workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "remove")} className="queue-action"><Trash2 className="size-4" aria-hidden="true" /> Remove</button></div> : null}
+    </li>) : null}</ol>
     {queueMessage ? <p role="status" className="mt-4 text-sm text-[#ffc16f]">{queueMessage}</p> : null}
-    <div className="mt-8 border-t border-white/10 pt-7"><div className="flex items-center gap-2"><Search className="size-5 text-[#ffc16f]" aria-hidden="true" /><h3 className="text-lg font-bold">Find a karaoke song</h3></div><p className="mt-2 text-sm leading-6 text-muted-foreground">Searches YouTube for videos that report they support embedding. Playback availability is checked again when the host starts a song.</p>
+    {queueState !== "ended" ? <div className="mt-8 border-t border-white/10 pt-7"><div className="flex items-center gap-2"><Search className="size-5 text-[#ffc16f]" aria-hidden="true" /><h3 className="text-lg font-bold">Find a karaoke song</h3></div><p className="mt-2 text-sm leading-6 text-muted-foreground">Searches YouTube for videos that report they support embedding. Playback availability is checked again when the host starts a song.</p>
       <label htmlFor={`singer-${role}`} className="mt-5 block text-sm font-semibold">Singer name</label><input id={`singer-${role}`} value={singerName} onChange={(event) => setSingerName(event.target.value)} maxLength={24} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white" />
       <label htmlFor={`song-search-${role}`} className="mt-5 block text-sm font-semibold">Search YouTube karaoke</label><input id={`song-search-${role}`} type="search" value={query} onChange={(event) => { setQuery(event.target.value); setSearchState({ status: "idle", songs: [] }); }} placeholder="Song or artist" maxLength={80} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white" />
       {searchState.status === "loading" ? <p role="status" className="mt-4 text-sm text-muted-foreground">Searching YouTube…</p> : null}
       {searchState.status === "empty" ? <p role="status" className="mt-4 text-sm text-muted-foreground">No supported results found. Try another song or artist.</p> : null}
       {searchState.status === "error" ? <p role="alert" className="mt-4 text-sm text-[#ffb0a2]">{searchState.message}</p> : null}
-      {searchState.status === "results" ? <ul className="mt-4 space-y-2" data-testid="search-results">{searchState.songs.map((song) => <li key={song.id} className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto]"><SongThumbnail youtubeId={song.youtubeId} /><div className="min-w-0"><p className="font-semibold">{song.title}</p><p className="text-xs text-muted-foreground">{song.channelTitle} · {duration(song.durationSeconds)} · YouTube</p></div><button type="button" disabled={workingId !== null || singerName.trim().length < 2} onClick={() => void add(song)} className="col-span-2 justify-self-end rounded-lg bg-[#d92362] px-4 py-2 text-sm font-bold text-white disabled:opacity-50 sm:col-span-1">Add</button></li>)}</ul> : null}
+      {searchState.status === "results" ? <ul className="mt-4 space-y-2" data-testid="search-results">{searchState.songs.map((song) => <li key={song.id} className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto]"><SongThumbnail youtubeId={song.youtubeId} /><div className="min-w-0"><p className="font-semibold">{song.title}</p><p className="text-xs text-muted-foreground">{song.channelTitle} · {duration(song.durationSeconds)} · YouTube</p></div><button type="button" disabled={workingId !== null || singerName.trim().length < 2 || queueState !== "connected"} onClick={() => void add(song)} className="col-span-2 justify-self-end rounded-lg bg-[#d92362] px-4 py-2 text-sm font-bold text-white disabled:opacity-50 sm:col-span-1">Add</button></li>)}</ul> : null}
       <p className="mt-4 text-xs text-muted-foreground">Results and metadata provided by YouTube. Videos stay on YouTube; MyKaraoke does not download them.</p>
-    </div>
+    </div> : null}
   </section>;
 }

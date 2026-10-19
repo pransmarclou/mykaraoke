@@ -18,7 +18,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cod
     if (!isValidRoomCode(code)) return NextResponse.json({ error: "Invalid room code." }, { status: 400 });
     const room = await access(code);
     const participants = await roomParticipants(room.roomId);
-    return NextResponse.json({ participants }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ participants, expiresAt: room.expiresAt.toISOString() }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return roomApiError(error, "Participant list failed");
   }
@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     if (room.role !== "guest" || !room.guestId) return NextResponse.json({ error: "Guest access is required." }, { status: 403 });
     await touchGuestPresence(room.guestId);
     const participants = await roomParticipants(room.roomId);
-    return NextResponse.json({ participants }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ participants, expiresAt: room.expiresAt.toISOString() }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return roomApiError(error, "Presence update failed");
   }

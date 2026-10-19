@@ -5,10 +5,13 @@ context, current state, reference evidence, and functional phase gates live in
 `Docs/project.md`, `Docs/memory.md`, `Docs/reference-app.md`, and
 `Docs/build-phases.md`.
 
-Current scope: Phase 5 YouTube discovery and shared queue is implemented
-locally and ready for owner review after a live search smoke test. Playback,
-microphones, and payments are not implemented. Keep controls honest and update
-`Docs/memory.md` at each gate.
+Current scope: Phase 7 lifecycle and reconnection are implemented locally,
+but the broad browser and nonproduction release gate is still pending.
+Physical smart TVs, microphones, and payments remain unverified or unbuilt.
+Keep controls honest and update `Docs/memory.md` at each gate.
+Finish the cross-browser web MVP before the later iOS/Android app and native
+subscription track; see `Docs/build-phases.md` for the revised gates.
+Do not start Phase 8 until the Phase 7 gate is reviewed.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

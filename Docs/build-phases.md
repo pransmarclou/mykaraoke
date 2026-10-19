@@ -8,9 +8,10 @@ Do not begin the next phase merely because code exists; the current phase must
 be demonstrably functional or explicitly marked **verification pending** with
 the missing environment or hardware named.
 
-The numbered phases below are the execution order. They map to the broader
-milestones in the master brief without turning those milestones into large,
-untestable batches.
+Phases 0–10 are the web track. The native N1–N5 track starts only after the
+cross-browser web MVP passes Phase 10 and the owner approves that handoff.
+Completed phase numbers are preserved. Each track is divided into testable
+vertical slices rather than a screen-first build.
 
 ## Status key
 
@@ -30,14 +31,17 @@ untestable batches.
 | 2 | Runnable product shell and design baseline | MVP | ACCEPTED |
 | 3 | Secure room creation and host recovery | MVP | ACCEPTED |
 | 4 | Guest joining, membership, and presence | MVP | ACCEPTED |
-| 5 | YouTube discovery and shared queue | MVP | READY FOR REVIEW |
-| 6 | Designated TV playback and host controls | MVP | NOT STARTED |
+| 5 | YouTube discovery and shared queue | MVP | ACCEPTED |
+| 6 | Designated TV playback and host controls | MVP | READY FOR REVIEW |
 | 7 | MVP reconnection, lifecycle, and multi-device gate | MVP | NOT STARTED |
 | 8 | Local Microphone Studio | Microphone Studio | NOT STARTED |
 | 9 | Singer and party experience | Party Experience | NOT STARTED |
-| 10 | Accounts, entitlements, and paywall | Monetization | NOT STARTED |
-| 11 | Experimental phone microphone | Advanced Audio | NOT STARTED |
-| 12 | PWA, hardening, compatibility, and launch | Launch Readiness | NOT STARTED |
+| 10 | Cross-browser web MVP, compatibility, and launch | Web release | NOT STARTED |
+| N1 | Native app foundation and core party actions | iOS/Android | NOT STARTED |
+| N2 | App-scanned QR pairing to the web big screen | iOS/Android + web display | NOT STARTED |
+| N3 | Native microphone and approved feature parity | iOS/Android | NOT STARTED |
+| N4 | Native subscriptions and shared entitlements | Monetization | NOT STARTED |
+| N5 | Native release and app-first transition | iOS/Android release | NOT STARTED |
 
 ---
 
@@ -390,125 +394,216 @@ disabling a feature removes both its UI affordance and mutation permission.
 
 ---
 
-## Phase 10 — Accounts, entitlements, and paywall
+## Phase 10 — Cross-browser web MVP, compatibility, and launch
 
 ### User-facing outcome
 
-A user can understand what is free, encounter a clear paywall only when a Pro
-capability requires it, subscribe through an approved billing provider, regain
-the interrupted context, and have entitlements enforced consistently across
-devices. Essential karaoke, accessibility, and safety controls remain free.
+The complete web party works across supported phone, laptop, and TV browsers:
+hosting, joining, search, queue, playback, recovery, and supported local
+microphone features. No native app download or subscription is required for
+the web MVP.
 
 ### Scope
 
-- Finalize the Free/Pro capability matrix and current YouTube policy review.
-- Add the minimum account requirement needed for durable purchases and restore.
-- Select and integrate an approved billing provider with server-verified
-  checkout and webhook processing.
-- Model subscriptions, entitlement grants, revocation, grace periods, and
-  provider event idempotency without storing sensitive payment data.
-- Build a distinct MyKaraoke paywall informed by reference behavior but not by
-  copied branding, copy, pricing, or visual composition.
-- Preserve the user's room/task context through open, cancel, success, failure,
-  and restore flows.
-- Enforce premium capabilities on the server, not only through hidden UI.
-- Document cancellation, refund/contact path, billing recovery, privacy, and
-  environment configuration.
+- Deploy the existing host, guest, and TV flows behind HTTPS with production
+  configuration, cleanup, operational alerts, and privacy-conscious telemetry.
+- Test responsive layouts, touch, keyboard, TV remote/focus, autoplay recovery,
+  and supported microphone behavior on named real devices and browsers.
+- Complete WCAG AA review, performance/security checks, dependency review,
+  secret scan, and truthful compatibility and failure-state documentation.
+- Keep the browser host/guest experience complete during the web MVP; do not
+  introduce an app-install gate or a web billing flow in this phase.
+- Treat PWA installability as optional enhancement, not a launch prerequisite;
+  YouTube and real-time party features must not be described as offline-ready.
 
 ### Tests and verification
 
-- Unit: capability matrix, entitlement state transitions, and plan display
-  mapping.
-- Integration: checkout creation authorization, signed webhook verification,
-  duplicate/out-of-order events, cancellation, grace period, revocation, and
-  cross-device entitlement refresh.
-- Playwright using provider test mode: free user reaches paywall, dismisses and
-  returns; successful test subscription unlocks only the correct capability;
-  failed/cancelled checkout preserves the party.
-- Security review: price IDs are server-controlled, webhook signatures are
-  required, premium mutations reject missing entitlements, and no card data is
-  handled by MyKaraoke.
-- Policy review confirms that sold features do not promise advertisement-free
-  YouTube playback or violate current platform terms.
+- Full automated regression, production build, staging smoke test, and
+  multi-context host/guest/display journey on a deployed HTTPS origin.
+- Real iOS and Android browser, laptop browser, and named TV-browser matrix;
+  separately mark passed, failed, limited, and untested capabilities.
+- Manual QR join, player start/error recovery, network interruption, local
+  microphone, keyboard/touch/remote, and accessibility checks where applicable.
+- Review rate limits, RLS, authorization, secrets, cleanup, performance, and
+  privacy against the deployed environment.
 
 ### Acceptance gate
 
-The complete test-mode purchase, restore, cancellation, and entitlement-loss
-journeys pass; the free karaoke journey remains functional; production billing
-is not enabled until pricing, legal text, and provider configuration are
-explicitly approved.
+The owner approves a usable deployed web MVP and its exact browser/device
+support claims. Native N1 may start only after this gate; no native app or
+subscription work is presented as part of web MVP completion.
 
 ---
 
-## Phase 11 — Experimental phone microphone
+## Native N1 — App foundation and core party actions
 
 ### User-facing outcome
 
-A joined phone can explicitly enter experimental microphone mode, grant access,
-connect to the host over WebRTC, transmit voice, recover where feasible, and be
-muted or adjusted by the host with honest quality indicators.
+An installed iOS or Android app can create or join a party and use the core
+host/guest functions without relying on a repackaged website. The web MVP
+remains available while native parity is being built.
 
 ### Scope
 
-- Define authenticated, room-scoped WebRTC signaling metadata.
-- Add `microphone_sessions` and lifecycle authorization without audio storage.
-- Establish peer connection, ICE exchange, STUN/TURN configuration, connection
-  state, and teardown.
-- Receive remote audio at the host, with per-singer mute/level controls.
-- Support reconnection and microphone handoff rules.
-- Measure one-way/round-trip indicators appropriate to the implementation and
-  display meaningful warnings without claiming zero latency.
-- Expand to multiple streams only after one remote stream is reliable.
+- Choose the mobile implementation approach only after evaluating platform UI,
+  camera, microphone, subscription, and YouTube-policy requirements.
+- Define durable app identity and account recovery without treating legacy
+  anonymous web cookies as mobile credentials.
+- Reuse secure server domain rules through versioned, authenticated APIs;
+  implement native host/join, room state, song search, queue, and basic controls.
+- Preserve a free path and the existing web host/guest experience throughout
+  the migration; do not require installation yet.
 
 ### Tests and verification
 
-- Unit: signaling state machine, permission policy, and quality-state mapping.
-- Integration: scoped signaling, unauthorized subscription/mutation denial,
-  stale session cleanup, reconnect, and TURN configuration errors.
-- Automated two-context WebRTC smoke tests where the browser environment allows.
-- Real iOS and Android phones on same-network and TURN-required network paths.
-- Recorded latency and dropout measurements by device/browser/network.
+- Native unit/UI tests for role transitions, identity recovery, search, queue,
+  and host-control states on both platforms.
+- Integration tests for app token scope, cross-room isolation, and reuse of
+  server-side permission and queue rules.
+- Real-device iOS/Android test: create, join, queue, and control a party with
+  web participants; document unsupported platform differences.
 
 ### Acceptance gate
 
-The feature remains labelled experimental until the real-device matrix and
-latency evidence meet a separately approved production threshold.
+Both native platforms complete a core party journey against the same backend
+without weakening web access or introducing billing as a prerequisite.
 
 ---
 
-## Phase 12 — PWA, hardening, compatibility, and launch
+## Native N2 — Scan the web display QR and control the big screen
 
 ### User-facing outcome
 
-MyKaraoke is installable, accessible, observable, rate-limited, documented, and
-deployed with a truthful compatibility matrix and reliable failure recovery.
+The party opens MyKaraoke on a laptop or TV browser. That web display shows a
+short-lived pairing QR. The host scans it with the installed app, confirms the
+room, and controls playback from the phone while the web browser stays the
+big-screen player. This is a new app-to-display pairing flow, distinct from
+the current host-generated code typed into `/tv/[code]`.
 
 ### Scope
 
-- Add manifest, icons, install metadata, service worker, offline shell, and
-  explicit offline limitations for YouTube and real-time features.
-- Complete WCAG AA review and keyboard/remote-control interaction.
-- Optimize loading, bundles, images, Realtime subscriptions, and database paths.
-- Add privacy-conscious analytics, error reporting, and operational alerts.
-- Perform security and abuse testing; validate cleanup and rate limits.
-- Test supported browsers and available phones, laptops, microphones, and TVs.
-- Configure Vercel/Supabase environments and production deployment runbooks.
-- Finalize public and technical documentation from verified behavior.
+- Add a display waiting screen that creates a single-use, expiring QR claim
+  bound to that display session, not a public room code.
+- Use the app camera to scan and confirm the target room/display; the backend
+  atomically binds the display to the host's room and rotates prior authority.
+- Keep host actions app-authorized and player events display-authorized; the
+  display must not inherit admin credentials from the QR.
+- Handle expired, replayed, wrong-room, revoked, offline, and re-pair cases.
+- Retain the web MVP's existing manual-code pairing as a documented fallback
+  until the owner explicitly decides whether to retire it.
 
 ### Tests and verification
 
-- PWA install/offline-shell tests on supported mobile and desktop browsers.
-- Full regression suite and production build.
-- Accessibility audit and manual keyboard/remote pass.
-- Performance budgets measured on representative devices and networks.
-- Security review, dependency review, RLS policy tests, and secret scan.
-- Compatibility matrix that separates passed, failed, limited, and untested.
-- Staging deployment smoke test followed by a production launch checklist.
+- Unit/integration: claim expiration, single use, replay rejection, binding,
+  rotation, role separation, and concurrent scans.
+- End-to-end: app scan → host confirmation → web player activation → host skip
+  or video end → consistent current/up-next state.
+- Real iOS and Android cameras with named laptop and TV browsers; test refresh,
+  QR rescan, network loss, and screen replacement.
 
 ### Acceptance gate
 
-The owner approves the tested compatibility/support claims, operational plan,
-known limitations, and production deployment.
+One real phone scans a real web-display QR and completes a performance on each
+supported platform/device pairing. No simulated QR or browser context alone
+is claimed as hardware verification.
+
+---
+
+## Native N3 — Microphone and approved feature parity
+
+### User-facing outcome
+
+The app supports the approved party and microphone features natively where
+the device permits them, with clear limitations. The web display remains the
+official YouTube playback surface for big-screen use.
+
+### Scope
+
+- Port the accepted singer/party features and relevant settings to native UI.
+- Implement local microphone permission, device behavior, monitoring, and
+  effects without mixing with or extracting YouTube audio.
+- Treat phone-to-display microphone transport as a separate experimental
+  WebRTC slice: scoped signaling, mute, teardown, STUN/TURN, and measured delay.
+- Do not promise wireless microphone quality or universal TV compatibility.
+
+### Tests and verification
+
+- Native state, permission, and audio-graph tests plus cross-device party tests.
+- Real iOS/Android microphone and network matrix; record latency and dropouts
+  before considering remote-mic support production-ready.
+
+### Acceptance gate
+
+Native host/guest features approved for the app work on both platforms.
+Remote microphone remains explicitly experimental unless its separate device
+and latency threshold is met.
+
+---
+
+## Native N4 — Store subscriptions and shared entitlements
+
+### User-facing outcome
+
+The free app can run the core party. An optional native subscription unlocks
+only approved Pro features; purchase, restore, cancellation, and entitlement
+changes stay consistent between iOS, Android, and the paired web display.
+
+### Scope
+
+- Decide the Free/Pro matrix, prices, account model, legal text, and whether
+  web host/guest access changes after native launch; obtain owner approval.
+- Recheck current Apple, Google Play, and YouTube rules immediately before
+  implementation. Use the applicable native store purchase systems and
+  server-verified, idempotent subscription events rather than a cosmetic gate.
+- Keep ordinary YouTube viewing, core karaoke, accessibility, and safety
+  outside the paywall; never sell ad-free or bypassed YouTube playback.
+- Preserve room context through purchase, cancel, failure, restore, expiry,
+  grace period, and cross-device sign-in.
+
+### Tests and verification
+
+- Unit/integration: capability matrix, provider event replay/order, grants,
+  revocation, account linkage, and cross-platform entitlement refresh.
+- Store sandbox/test-mode end-to-end flows on both platforms, including
+  purchase, restore, cancel, billing failure, and entitlement loss.
+- Security/policy review of server authorization, purchase verification,
+  disclosure, and the current YouTube/player restrictions.
+
+### Acceptance gate
+
+Real store test environments prove purchase through entitlement loss on both
+platforms; free parties still work. Production billing waits for explicit
+owner approval of pricing, terms, and platform review.
+
+---
+
+## Native N5 — Release and app-first transition
+
+### User-facing outcome
+
+iOS and Android become the primary personal party interface. A web browser
+remains the big-screen display entered through app-scanned QR pairing.
+
+### Scope
+
+- Complete store review readiness, accessibility, privacy, support, crash
+  reporting, performance, and a truthful supported-device matrix.
+- Decide with the owner whether web host/guest flows remain available as a
+  fallback or are restricted after native parity and adoption are verified.
+- Provide an upgrade path for existing web rooms/users without silently
+  granting app identity or subscription rights from anonymous web cookies.
+
+### Tests and verification
+
+- Production-like iOS, Android, laptop-browser, and named TV-browser journey;
+  verify scan, party control, player recovery, subscription state, and logout.
+- Store review/test-distribution pass and rollback/support plan.
+
+### Acceptance gate
+
+The owner approves app-first onboarding only after native parity, QR handoff,
+billing, and real-device support are demonstrated. Web-display access remains
+usable without entering payment details or host credentials on the TV.
 
 ---
 
@@ -521,13 +616,16 @@ Update this table only with evidence, never optimism.
 | 0 | ACCEPTED | Document inventory and consistency check passed 2026-10-17 | Not applicable | Owner instruction to proceed through Phase 2, 2026-10-17 |
 | 1 | ACCEPTED | REA scenario captures and evidence ledger reviewed 2026-10-17 | In-app browser host refresh and route navigation | Owner instruction to proceed through Phase 2, 2026-10-17; unresolved questions carried forward |
 | 2 | ACCEPTED | Lint, typecheck, production build, and 10 Playwright tests passed after branding 2026-10-17 | Desktop and mobile browser render reviewed; no browser page errors observed | Owner instruction to proceed to Phase 3, 2026-10-17 |
-| 3 | READY FOR REVIEW | Unit 4/4, integration 5/5, desktop/mobile Playwright 12/12, lint, typecheck, build, DB lint passed 2026-10-17 | Real room and QR reviewed in in-app mobile browser; physical phone scan unavailable | Owner review pending |
-| 4 | NOT STARTED | — | — | — |
-| 5 | NOT STARTED | — | — | — |
-| 6 | NOT STARTED | — | — | — |
-| 7 | NOT STARTED | — | — | — |
+| 3 | ACCEPTED | Unit 4/4, integration 5/5, desktop/mobile Playwright 12/12, lint, typecheck, build, DB lint passed 2026-10-17 | Real room and QR reviewed in in-app browser; physical phone scan unavailable | Owner asked to proceed to Phase 4, 2026-10-18 |
+| 4 | ACCEPTED | Unit 7/7, integration 8/8, Playwright 16/16 and static/schema checks passed 2026-10-18 | Local browser host/guest roster and refresh checked; physical phone untested | Owner asked to proceed to Phase 5, 2026-10-18 |
+| 5 | ACCEPTED | Unit 11/11 after thumbnail refinement, integration 13/13, Playwright 18/18 and static/schema checks passed 2026-10-18 | Live local YouTube search and loaded thumbnails checked; no live playback claim | Owner asked to proceed to Phase 6, 2026-10-18 |
+| 6 | ACCEPTED | Unit 15/15, integration 16/16, Playwright 20/20 and static/schema checks passed 2026-10-18 | Official sample played in desktop Chromium; two karaoke embeds failed; physical TV untested | Owner asked to continue, 2026-10-19 |
+| 7 | IMPLEMENTED, VERIFICATION PENDING | Unit 15/15, integration 18/18, lint/typecheck/DB lint, production build, and isolated desktop/mobile four-session journeys passed; broad browser run hit intermittent local 503s | No hosted HTTPS, physical phone, or TV-browser checks | Owner review pending |
 | 8 | NOT STARTED | — | — | — |
 | 9 | NOT STARTED | — | — | — |
 | 10 | NOT STARTED | — | — | — |
-| 11 | NOT STARTED | — | — | — |
-| 12 | NOT STARTED | — | — | — |
+| N1 | NOT STARTED | — | — | — |
+| N2 | NOT STARTED | — | — | — |
+| N3 | NOT STARTED | — | — | — |
+| N4 | NOT STARTED | — | — | — |
+| N5 | NOT STARTED | — | — | — |

@@ -47,7 +47,7 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await guest.goto(`/join?code=${code}`);
     await guest.getByRole("textbox", { name: "Your display name" }).fill("Alex");
     await guest.getByRole("button", { name: "Join room" }).click();
-    await expect(guest).toHaveURL(new RegExp(`/room/${code}$`));
+    await expect(guest).toHaveURL(new RegExp(`/room/${code}$`), { timeout: 15_000 });
     const forbidden = await guest.evaluate(async (roomCode) => {
       const response = await fetch(`/api/rooms/${roomCode}/playback`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start", requestKey: crypto.randomUUID() }) });
       return response.status;
@@ -97,6 +97,87 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(tv.getByText("Waiting for the next song")).toBeVisible({ timeout: 10_000 });
   } finally {
     await guestContext.close();
+    await tvContext.close();
+    if (roomId) await db.query("delete from public.rooms where id = $1", [roomId]);
+    await db.query("delete from public.song_search_results where query = $1", [query]);
+    await db.query("delete from public.song_search_cache where query = $1", [query]);
+    await db.end();
+  }
+});
+
+test("two guests and a TV recover from reloads and network loss, then stop when the host closes the room", async ({ page, browser }) => {
+  test.setTimeout(240_000);
+  const db = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
+  const query = `lifecycle fixture ${randomUUID().slice(0, 8)}`;
+  const generation = randomUUID();
+  const guestAContext = await browser.newContext();
+  const guestBContext = await browser.newContext();
+  const tvContext = await browser.newContext();
+  let roomId: string | undefined;
+  try {
+    await db.query("insert into public.song_search_cache (query, generation) values ($1, $2)", [query, generation]);
+    await db.query(
+      `insert into public.song_search_results (query, youtube_id, title, channel_title, duration_seconds, generation)
+       values ($1, 'gBcDeFgHi03', 'Lifecycle Fixture Song', 'Fixture channel', 180, $2)`,
+      [query, generation],
+    );
+    await page.goto("/host");
+    await page.getByRole("button", { name: "Create a room" }).click();
+    const code = (await page.getByTestId("room-code").textContent())!;
+    roomId = (await db.query<{ id: string }>("select id from public.rooms where code = $1", [code])).rows[0].id;
+    const searchStatus = await page.evaluate(async ({ roomCode, term }) => (await fetch(`/api/rooms/${roomCode}/search?q=${encodeURIComponent(term)}`)).status, { roomCode: code, term: query });
+    expect(searchStatus).toBe(200);
+    const guests = [await guestAContext.newPage(), await guestBContext.newPage()];
+    for (const [index, guest] of guests.entries()) {
+      await guest.goto(`/join?code=${code}`);
+      await guest.getByRole("textbox", { name: "Your display name" }).fill(index === 0 ? "Alex" : "Sam");
+      await guest.getByRole("button", { name: "Join room" }).click();
+      await expect(guest).toHaveURL(new RegExp(`/room/${code}$`), { timeout: 15_000 });
+    }
+    await expect(page.getByTestId("participant")).toHaveCount(2);
+    const tv = await tvContext.newPage();
+    await tv.route("https://www.youtube.com/iframe_api", (route) => route.fulfill({ status: 200, contentType: "application/javascript", body: fakeYouTubeApi }));
+    await tv.goto(`/tv/${code}`);
+    await page.getByRole("button", { name: "Generate TV pairing code" }).click();
+    const pairCode = (await page.getByTestId("tv-pair-code").textContent())!;
+    await tv.getByRole("textbox", { name: "TV pairing code" }).fill(pairCode);
+    await tv.getByRole("button", { name: "Pair this display" }).click();
+    await expect(tv.getByText("Waiting for the next song")).toBeVisible();
+    await guests[0].getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
+    await expect(guests[0].getByText("Lifecycle Fixture Song")).toBeVisible();
+    await guests[0].getByRole("button", { name: "Add" }).click();
+    await expect(guests[0].getByText("Lifecycle Fixture Song added to the queue.")).toBeVisible({ timeout: 30_000 });
+    await expect(guests[1].getByTestId("queue-item")).toHaveCount(1);
+    await page.getByRole("button", { name: "Start next song" }).click();
+    await expect(tv.getByRole("heading", { name: "Lifecycle Fixture Song" })).toBeVisible();
+    await tv.getByRole("button", { name: "Start video" }).click();
+    await expect(page.getByText("Player: playing")).toBeVisible();
+
+    await guestAContext.setOffline(true);
+    await expect(guests[0].getByText("Connection interrupted. Reconnecting…", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await guestAContext.setOffline(false);
+    await expect(guests[0].getByText("Connection interrupted. Reconnecting…", { exact: true })).toHaveCount(0, { timeout: 15_000 });
+    await page.reload();
+    await expect(page.getByTestId("room-code")).toHaveText(code);
+    await guests[0].reload();
+    await expect(guests[0].getByTestId("participant")).toHaveCount(2);
+    await guests[1].reload();
+    await expect(guests[1].getByText("Lifecycle Fixture Song").first()).toBeVisible();
+    await tv.reload();
+    await expect(tv.getByTestId("tv-player").locator("iframe")).toBeVisible();
+
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "End room" }).click();
+    await expect(page.getByRole("button", { name: "Create a room" })).toBeVisible();
+    await expect(tv.getByRole("alert").filter({ hasText: "Playback has stopped" })).toBeVisible({ timeout: 10_000 });
+    await expect(tv.getByTestId("tv-player")).toHaveCount(0);
+    for (const guest of guests) {
+      await expect(guest.getByRole("alert").filter({ hasText: "This room ended or your access expired" }).first()).toBeVisible({ timeout: 10_000 });
+      await expect(guest.getByRole("searchbox", { name: "Search YouTube karaoke" })).toHaveCount(0);
+    }
+  } finally {
+    await guestAContext.close();
+    await guestBContext.close();
     await tvContext.close();
     if (roomId) await db.query("delete from public.rooms where id = $1", [roomId]);
     await db.query("delete from public.song_search_results where query = $1", [query]);

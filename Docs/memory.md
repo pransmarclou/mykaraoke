@@ -6,16 +6,19 @@ to evidence or code rather than restating large documents.
 
 ## Snapshot
 
-- Last updated: 2026-10-18
-- Current stage: Phase 5 — YouTube discovery and shared queue
-- Current status: Phase 5 implemented locally; live search verified; ready for owner review
-- Repository state at discovery: Empty directory; Git initialized on `main`
-  during Phase 2, with all project files currently uncommitted
-- Current phase gate: Owner review of Phase 5 before Phase 6 playback
+- Last updated: 2026-10-19
+- Current stage: Phase 7 — MVP lifecycle, reconnection, and release gate
+- Current status: Phase 7 implemented locally; verification pending after broad browser-suite instability
+- Repository state: Git initialized on `main` during Phase 2; current Phase 7
+  changes are in the working tree and have not been committed by this handoff
+- Current phase gate: Stabilize the broad local browser run and verify a nonproduction deployment before Phase 7 acceptance
+- Delivery direction: Finish the phone/laptop/TV-browser web MVP through Phase
+  10; only then begin the installed iOS/Android N1–N5 track and native
+  subscriptions. The owner subsequently asked to continue into Phase 7.
 - Primary reference target: `https://okevideoke.online/`
 - Dedicated host reference: `https://okevideoke.online/host`
-- Paywall reference: Route and trigger not yet observed; included in Phase 1
-  reconnaissance and a dedicated post-MVP build phase
+- Paywall reference: Visible `/premium` route and root-page entry observed;
+  in-party upgrade trigger and purchase lifecycle remain unresolved
 
 ## Owner instructions
 
@@ -24,12 +27,16 @@ to evidence or code rather than restating large documents.
 - Build in phases organized by functionality.
 - Implement and test each functional slice together.
 - Do not attempt to build the whole application in one pass.
+- Finish a complete cross-browser web MVP before switching to native apps.
+- Later make the installed app the personal party interface; a web big-screen
+  display shows a QR that the app scans to pair, and subscriptions are native.
 
 ## Confirmed product decisions
 
 - Product: MyKaraoke by Nook Studio
 - Tagline: Your songs. Your stage. Your party.
-- Delivery: Web-first and installable as a PWA
+- Delivery: complete cross-browser web MVP first; later app-first iOS/Android
+  with a QR-paired web display. PWA installability is optional, not a web gate
 - Basic use: No account required to host or join
 - Primary roles: Host, guest/singer, and TV/playback device
 - Core backend: Supabase PostgreSQL, Realtime, optional Auth, and RLS
@@ -72,10 +79,13 @@ them at the phase that first needs them.
 | Anonymous participant identity/session design | Guest joining | Resolved locally: per-browser random HttpOnly guest credential, SHA-256 digest in `room_members`, scoped to one active room |
 | Deployment Vercel project and environments | Launch readiness | Open |
 | Analytics and error-reporting provider | Observability | Open |
-| TURN provider and operating budget | Remote microphone | Open |
+| TURN provider and operating budget | Optional native N3 remote microphone | Open |
 | Physical device test inventory | Audio/compatibility | Open |
-| Payment provider, pricing, and billing model | Paywall phase | Open |
-| Free/Pro entitlement boundary | Paywall phase | Open pending policy review |
+| Native store products, pricing, and billing model | Native N4 | Open |
+| Free/Pro entitlement boundary | Native N4 | Open pending policy review |
+| Native framework and app identity migration | Native N1 | Open; preserve web anonymous sessions until an approved transition |
+| Web host/guest availability after app launch | Native N5 | Open; owner said app-first, but mandatory-install timing and fallback policy require explicit approval after parity |
+| Display QR claim design and device inventory | Native N2 | Planned: one-use expiring web-display claim scanned by the app; real iOS/Android and named TV hardware required |
 
 ## Current evidence and verification
 
@@ -188,19 +198,50 @@ them at the phase that first needs them.
   song-queue browser tests, and production build passed. The live local host
   search showed loaded thumbnails at a narrow viewport; screenshot:
   `test-results/phase5-thumbnails-mobile.png`. No playback was attempted.
+- Phase 6 added one designated TV/browser session per room, an expiring
+  eight-character pairing code, device credential rotation, a TV-only player
+  event boundary, idempotent host start/pause/resume/skip commands, and automatic
+  queue advancement on a verified end event. The TV uses the official YouTube
+  IFrame Player API and requires an explicit start gesture. Guests see only
+  read-only current/up-next state; a public room code grants no device control.
+- Phase 6 verification on 2026-10-18: lint, typecheck, production build,
+  local schema lint, unit 15/15, integration 16/16, and desktop/mobile
+  Playwright 20/20 passed; the two opt-in live-player variants are skipped in
+  the routine run. The desktop opt-in live check separately passed with the
+  official YouTube IFrame API sample video playing on the paired TV browser
+  before host skip. Screenshot: `test-results/phase6-live-tv.png`.
+- Local `.env.local` now uses `APP_ORIGIN=http://127.0.0.1:3100` to match the
+  documented preview URL. Its server-only YouTube key remains ignored and was
+  not copied into documentation or browser code.
+- Two karaoke search results tested earlier on desktop returned YouTube player
+  error 150 despite reporting embeddability in the Data API. The TV showed a
+  recovery message and host skip advanced the queue. A successful sample-video
+  playback does not guarantee karaoke-video availability. No physical smart
+  TV, remote control, HDMI output, hosted domain, or regional variant was tested.
+- A final pure command-replay rule and unit test were added after the full
+  browser pass; lint, typecheck, unit 15/15, build, and focused playback
+  integration 3/3 and focused desktop playback browser 1/1 passed afterward.
+  The full browser suite was not rerun for that server-side pure-rule extraction.
 
 ## Active blockers
 
-No local Phase 5 verification blocker remains; owner review is pending. A
-hosted MyKaraoke Supabase project, hosted YouTube secret, trusted proxy IP
-header, HTTPS origin, scheduled cleanup, and real cross-device testing remain
-deployment work. The key shared in chat should be rotated or restricted before
-production use. Guest presence still uses heartbeat polling rather than Realtime.
+Phase 7 cannot be accepted yet. The isolated desktop and mobile four-session
+journeys passed, but a broad serial browser run intermittently returned 503
+from local search/room endpoints. A nonproduction deployment, scheduled cleanup,
+trusted proxy IP header, HTTPS origin, and real cross-device checks remain
+unverified. The configured `.env.local` points at a separate hosted database;
+Phase 7's additive migration was applied only to the native local stack. Do
+not run Phase 7 code against that other database until its ownership and
+migration plan are confirmed. Rotate or restrict the key shared in chat before
+production. Physical smart-TV behavior and video-specific embed failures
+remain unresolved.
 
 ## Next approved action
 
-Ask the owner to review Phase 5 discovery and queue behavior. Do not begin
-Phase 6 playback until the owner requests it.
+Reproduce/classify the intermittent local 503, rerun the full browser suite,
+then validate the multi-device journey on a MyKaraoke nonproduction HTTPS
+deployment with hourly cleanup scheduled. Request owner review at that gate;
+do not begin Phase 8 yet.
 
 ## Decision log
 
@@ -230,6 +271,12 @@ Phase 6 playback until the owner requests it.
 | 2026-10-18 | Limit guests to three active songs and reject same-actor duplicates | Protect queue fairness and accidental double taps | Request UUID replay is idempotent; host can manage the queue |
 | 2026-10-18 | Store the owner-supplied YouTube key only in ignored local `.env.local` | Live Phase 5 smoke testing needs a server-side credential, and no hosted secrets store is linked | Live local search passed; hosted search still needs its own restricted secret and verification |
 | 2026-10-18 | Show YouTube thumbnails in search and queue cards | Owner requested visible video artwork before the next phase | Derive the CDN path only from validated video IDs; use a fallback and keep playback gated |
+| 2026-10-18 | Proceed with Phase 6 after owner request | Owner asked for the next functional phase | Phase 5 accepted; TV pairing, playback, host control, and tests implemented together |
+| 2026-10-18 | Give one paired TV the player-event authority | A room code and guest session must not spoof playback or grant host controls | Short-lived pairing code issues a rotating HttpOnly device credential; host commands remain separately authorized |
+| 2026-10-18 | Keep player activation explicit and errors recoverable | Browser autoplay policy and per-video YouTube restrictions vary | TV user presses Start video; error/blocked states are shown; host may skip |
+| 2026-10-19 | Finish the cross-browser web MVP before native development | Owner clarified delivery order and device strategy | Phase 10 becomes the web compatibility/launch gate; native N1–N5 start afterward; current Phase 6 review is unchanged |
+| 2026-10-19 | Plan an app-scanned QR shown by the future web display | Owner wants phones to initiate big-screen use after native launch | Native N2 adds a one-use display claim and app confirmation; current manual TV pairing stays as web-MVP behavior |
+| 2026-10-19 | Move subscriptions out of the web MVP into native N4 | Owner wants native iOS/Android subscription focus after web completion | Web remains usable without app install or payment; native purchase and server entitlement rules get separate gates |
 
 ## 2026-10-17 session handoff
 
@@ -374,6 +421,110 @@ Phase 6 playback until the owner requests it.
   play; playback and hosted deployment are unverified. Owner review remains
   the Phase 5 gate.
 - Next exact action: Owner reviews Phase 5; Phase 6 only on request.
+
+## 2026-10-18 TV playback handoff
+
+- Phase and slice: Phase 6, designated TV playback and host controls.
+- Completed: Additive playback migration; expiring/rate-limited TV pairing and
+  rotating device credential; host-only idempotent start/pause/resume/skip;
+  TV-only observed player events; automatic end/skip advancement; current and
+  up-next status on host, guest, and TV; explicit activation and YouTube error
+  recovery prompts.
+- Files/migrations changed: `supabase/migrations/20261018030000_playback.sql`,
+  `src/lib/playback/`, playback API routes, host/guest playback dashboard,
+  `/tv/[code]`, and unit/integration/browser tests.
+- Tests run and results: `npm run lint`, `npm run typecheck`, `npm run build`,
+  `supabase db lint --local` passed; unit 15/15, integration 16/16, routine
+  desktop/mobile Playwright 20/20 passed (two opt-in live tests skipped).
+  Desktop opt-in live-player check passed separately. Initial integration run
+  failed only because local Realtime was stopped; it passed after `supabase
+  start`. Initial browser run used a mismatched localhost origin; test-server
+  configuration was corrected. A transient desktop join delay in one full run
+  passed on the rerun with a 15-second navigation assertion.
+  A final command-replay pure-rule extraction passed focused playback
+  integration 3/3 and focused desktop playback browser 1/1; the full browser
+  suite predates only that behavior-preserving extraction.
+- Manual/device verification: Actual YouTube sample video played in desktop
+  Chromium on a separately paired browser context and responded to host skip;
+  screenshot `test-results/phase6-live-tv.png`. Two real karaoke results yielded
+  player error 150 and were recovered with host skip. Mobile player events were
+  simulated in Playwright; no live mobile or physical smart-TV playback claim.
+- Evidence IDs used or created: Bounded reference `/host` search/add capture
+  `ev_22a5b34124c0482c7a28ea2bdc1d5bf402311fbb568aeb4efb4ed3b3fc89c3b4`;
+  actual reference playback/end was not established.
+- Decisions made: Device credential is separate from host/guest credentials;
+  one paired device at a time; explicit TV start gesture; player errors pause
+  intent and show a host-skip path. The REA skill kept reference claims bounded
+  to visible iframe/controls, and the React review prompted a retry-safe
+  YouTube script loader.
+- Known limitations/blockers: Embeddability metadata does not guarantee actual
+  playback; physical TV, remote, hosted HTTPS, and regional behavior remain
+  untested. Phase 7 reconnection/lifecycle work is not started.
+- Next exact action: Owner reviews Phase 6; begin Phase 7 only on request.
+
+## 2026-10-19 product-sequencing handoff
+
+- Phase and slice: Planning change only; Phase 6 remains ready for owner review.
+- Completed: Reframed the roadmap as web Phases 0–10 followed by native N1–N5.
+  The web MVP is complete only after real phone, laptop, and named TV-browser
+  journeys are verified. The later app-first model uses installed iOS/Android
+  apps for party actions and an app-scanned QR displayed by the web big screen.
+  Subscriptions moved to native N4; no billing or app-install gate was built.
+- Files changed: Product context, phase plan, contributor instructions,
+  roadmap, and public project direction only; application/runtime code was
+  not changed for this planning decision.
+- Tests run and results: Documentation consistency and diff checks only;
+  prior Phase 6 automated/live-player evidence remains unchanged.
+- Policy evidence: Current [Apple App Review](https://developer.apple.com/app-store/review/guidelines/),
+  [Google Play payments](https://support.google.com/googleplay/android-developer/answer/10281818),
+  and [YouTube developer policies](https://developers.google.com/youtube/terms/developer-policies)
+  were consulted on 2026-10-19. Recheck them before native billing or player
+  implementation; this planning pass is not legal or store approval.
+- Decisions made: Keep current web TV code-pairing for the web MVP; add a
+  separate one-use display-generated QR claim in native N2. Keep the web MVP
+  independently usable and free while the native app is developed.
+- Open owner choices: Exact post-native web host/guest fallback, native stack,
+  account migration, Pro capabilities/pricing, and supported TV hardware.
+- Next exact action: Owner reviews Phase 6; proceed to Phase 7 only when asked.
+
+## Phase 7 handoff — 2026-10-19
+
+- Completed: Room expiry warning in roster; terminal queue, playback, and TV
+  states that clear stale controls and stop the player; monotonic snapshot
+  reconciliation; Realtime resubscription with polling fallback; stable retry
+  keys for queue adds and host playback commands; database-backed queue write
+  limits; explicit host-closure/no-transfer behavior; idempotent cleanup
+  function and `npm run cleanup:rooms`; reliable full navigation after
+  join/leave/close; four-context host/two-guests/TV recovery test.
+- Safety: The cleanup CLI refuses a hosted database unless
+  `MYKARAOKE_CLEANUP_DB_HOST` matches its exact hostname. This guard was
+  exercised against the existing configuration; it made no hosted change.
+- Schema: `20261019010000_lifecycle_limits.sql` applied to local Supabase only.
+  No unrelated hosted database was migrated.
+- Tests: lint (no errors), typecheck, unit 15/15, integration 18/18, and
+  local DB lint passed after the final navigation and build-runner edits. The
+  Realtime test timed out once under an eight-second local stack deadline;
+  with an explicit cold-stack allowance, the full integration run passed.
+  Isolated four-context desktop
+  and mobile Chromium journeys passed. Optimized production build passed.
+  Production-mode baseline playback test passed in a serial suite. A broader
+  run was stopped after intermittent local 503 responses, so the full Phase 7
+  automated gate is **not** claimed.
+- Manual/device: No physical phone, smart TV, real short network outage,
+  hosted HTTPS domain, or regional karaoke embed check. Playwright network
+  loss used browser-context offline emulation; YouTube player was a test
+  fixture in this Phase 7 journey.
+- Evidence: Existing bounded REA host refresh evidence in
+  `Docs/reference-app.md`; no new reference capture was needed for the
+  MyKaraoke-specific lifecycle policy.
+- Decisions: Host tab departure leaves the room open until explicit closure
+  or 24-hour expiry; no host transfer. Cleanup should run hourly with a
+  server-only local/hosted database connection and purge after seven days.
+  The native app-first pairing/subscription track still begins only after
+  the web MVP gate.
+- Next: Diagnose the intermittent local 503; run the complete suite and
+  schema lint, then nonproduction deployment and real-device checks. Stop at
+  Phase 7 review before Phase 8.
 
 ## Session handoff template
 

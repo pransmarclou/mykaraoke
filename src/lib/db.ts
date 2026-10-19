@@ -9,8 +9,8 @@ export function getDb(): Pool {
   if (!globalForDb.myKaraokePool) {
     globalForDb.myKaraokePool = new Pool({
       connectionString,
-      max: 5,
-      connectionTimeoutMillis: 5_000,
+      max: 10,
+      connectionTimeoutMillis: 10_000,
       idleTimeoutMillis: 30_000,
     });
   }

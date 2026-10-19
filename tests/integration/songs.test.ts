@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getDb } from "../../src/lib/db";
 import { createHostRoom } from "../../src/lib/rooms/repository";
 import { joinRoom, roomAccess } from "../../src/lib/rooms/guests";
-import { addQueueItem, mutateQueue, queueSnapshot, QueueError } from "../../src/lib/songs/queue";
+import { addQueueItem, mutateQueue, queueSnapshot, QueueError, reserveQueueMutation } from "../../src/lib/songs/queue";
 import { searchYouTube } from "../../src/lib/songs/youtube";
 
 const rooms: string[] = [];
@@ -73,13 +73,29 @@ test("host mutations require current version and stay isolated to a room", async
   const skipped = await mutateQueue({ roomId: host.room.id, id: moved.items[0].id, action: "skip", expectedVersion: moved.version });
   assert.equal(skipped.items.length, 1);
   assert.equal((await queueSnapshot(other.room.id)).items.length, 0);
-  assert.deepEqual(await roomAccess(host.room.code, undefined, guest.credential), { roomId: host.room.id, role: "guest", guestId: guest.guest.id });
+  assert.deepEqual(await roomAccess(host.room.code, undefined, guest.credential), { roomId: host.room.id, role: "guest", guestId: guest.guest.id, expiresAt: host.room.expiresAt });
   await assert.rejects(roomAccess(other.room.code, undefined, guest.credential), /access denied/);
+});
+
+test("queue write budget is scoped to an actor and resets after its window", async () => {
+  const host = await createHostRoom(); rooms.push(host.room.id);
+  const client = await getDb().connect();
+  const now = new Date();
+  try {
+    await client.query("begin");
+    await reserveQueueMutation(client, host.room.id, "host", 2, now);
+    await reserveQueueMutation(client, host.room.id, "host", 2, now);
+    await assert.rejects(reserveQueueMutation(client, host.room.id, "host", 2, now), (error: unknown) => error instanceof QueueError && error.reason === "limited");
+    await reserveQueueMutation(client, host.room.id, "guest:test", 2, now);
+    await reserveQueueMutation(client, host.room.id, "host", 2, new Date(now.getTime() + 60_001));
+    await client.query("commit");
+  } catch (error) { await client.query("rollback"); throw error; }
+  finally { client.release(); }
 });
 
 test("public database roles cannot access search and queue tables", async () => {
   for (const role of ["anon", "authenticated"]) {
-    for (const [table, column] of [["song_search_results", "fetched_at"], ["song_search_cache", "fetched_at"], ["song_search_usage", "api_calls"], ["song_search_limits", "requests"], ["queue_items", "created_at"]]) {
+    for (const [table, column] of [["song_search_results", "fetched_at"], ["song_search_cache", "fetched_at"], ["song_search_usage", "api_calls"], ["song_search_limits", "requests"], ["queue_items", "created_at"], ["queue_mutation_limits", "mutations"]]) {
       for (const statement of [
         `select * from public.${table} limit 1`,
         `insert into public.${table} default values`,
@@ -115,9 +131,9 @@ test("private Supabase Realtime channel delivers only a version invalidation to 
     .on("broadcast", { event: "queue_changed" }, (message) => receive(Number(message.payload.version)))
     .subscribe((status) => joined(status));
   try {
-    assert.equal(await withTimeout(subscribed, 8_000, "Realtime subscribe timeout"), "SUBSCRIBED");
+    assert.equal(await withTimeout(subscribed, 15_000, "Realtime subscribe timeout"), "SUBSCRIBED");
     await addQueueItem({ roomId: host.room.id, role: "host", searchResultId: song, singerName: "Host", requestKey: randomUUID() });
-    assert.equal(await withTimeout(received, 8_000, "Realtime event timeout"), 1);
+    assert.equal(await withTimeout(received, 20_000, "Realtime event timeout"), 1);
   } finally { await client.removeChannel(channel); await client.realtime.disconnect(); }
 });
 

@@ -3,10 +3,22 @@
 Phases 0–2: project context, reference research, and product shell — complete.
 Phase 3: secure local room lifecycle — accepted.
 Phase 4: real guest joining, sessions, and presence — accepted.
-Phase 5: secure song discovery and shared queue — implemented locally; live
-YouTube search smoke check passed, ready for owner review.
-Phases 6–7: playback and MVP recovery — not started.
-Phases 8–12: microphones, party features, paywall, advanced audio, and launch.
+Phase 5: secure song discovery and shared queue — accepted.
+Phase 6: designated TV playback and host controls — accepted after owner
+instruction to continue; desktop live-player check passed.
+Web Phase 7: MVP reconnection and lifecycle gate — implemented locally,
+verification pending (full suite, nonproduction deployment, devices).
+Web Phase 8: local Microphone Studio — not started.
+Web Phase 9: singer and party experience — not started.
+Web Phase 10: real phone/laptop/TV-browser compatibility, hardening, and web
+MVP launch — not started. The web remains usable without an app or payment.
+
+Only after the web MVP is accepted: native N1 builds iOS/Android core party
+actions; N2 adds app-scanned QR pairing to the web big screen; N3 covers
+native microphone and approved feature parity; N4 adds optional native store
+subscriptions; N5 handles app-store release and the app-first transition.
+The web display remains the big-screen player. Mandatory app installation and
+web host/guest fallback policy need a later owner decision, not an early gate.
 
 Each phase must be tested as a functional slice. The detailed gates are in
 [Docs/build-phases.md](Docs/build-phases.md).

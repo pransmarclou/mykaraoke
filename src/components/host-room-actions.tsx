@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Check, Copy, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function HostRoomActions({ code, joinUrl }: { code: string; joinUrl: string }) {
-  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -28,7 +26,9 @@ export function HostRoomActions({ code, joinUrl }: { code: string; joinUrl: stri
     try {
       const response = await fetch(`/api/rooms/${code}/close`, { method: "POST" });
       if (!response.ok) throw new Error("Room close failed");
-      router.refresh();
+      // Closing revokes the host cookie; reload from the server to avoid a stale active-room payload.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/host");
     } catch {
       setError("Could not end the room. Please try again.");
     } finally {

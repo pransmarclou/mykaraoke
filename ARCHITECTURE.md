@@ -17,13 +17,37 @@ room row, validate role and version, and broadcast only a version invalidation
 to a private random Supabase Realtime topic. Clients refetch the authenticated
 snapshot; polling reconciles missed events.
 
+Phase 6 adds `src/lib/playback/` and `/tv/[code]`. Host commands are checked
+server-side and replay-safe by request UUID. A short-lived pairing code gives
+one TV browser a rotating HttpOnly credential; room codes alone authorize
+nothing. The designated TV reports actual IFrame Player API events, while the
+server stores desired/observed states and advances the queue transactionally.
+Player errors stay visible with a host-skip recovery path.
+
+Phase 7 adds terminal client states on closure/expiry, monotonic queue and
+playback snapshot reconciliation, Realtime retry with polling fallback, and
+stable browser retry keys that reach the existing server idempotency checks.
+The new queue-write budget is transactional and RLS-protected. An explicit
+server-only cleanup command closes expired rooms, revokes device authority,
+and purges old rows; scheduling it is a deployment responsibility. Host tab
+departure does not transfer ownership or close the room.
+
+The future native track will reuse server-authoritative domain rules through
+authenticated APIs. Its big-screen handoff differs from today's pairing:
+the web display creates a single-use expiring QR claim, an authenticated host
+app scans and confirms it, and the backend grants only display authority to
+the browser. Native purchase identity and entitlements remain separate from
+both the public room code and the display session. None of that native flow
+is implemented in the web MVP.
+
 Migrations live in `supabase/migrations/`. The `rooms`, `room_settings`,
 `room_sessions`, `room_creation_limits`, `room_members`, `room_presence`, and
 `room_join_limits` tables have RLS enabled and no client-facing grants. Guest
 membership is durable for the room lifetime; presence is a separate short-lived
 heartbeat lease, rendered by server polling. Search cache/usage and queue tables
-also deny direct browser DB roles. The local Supabase stack runs database and
-Realtime capabilities; account Auth remains deferred.
+also deny direct browser DB roles. Playback state, pairing limits, and command
+records also deny direct browser DB roles. The local Supabase stack runs
+database and Realtime capabilities; account Auth remains deferred.
 
 See [Docs/project.md](Docs/project.md) for the product architecture and
 [Docs/build-phases.md](Docs/build-phases.md) for later boundaries.

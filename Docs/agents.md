@@ -6,13 +6,21 @@ MyKaraoke. Read this file first, followed by `project.md`, `memory.md`,
 
 ## Current instruction
 
-Phases 0–4 are accepted. Phase 5 discovery and shared queue is implemented
-locally; the live YouTube search smoke check passed and owner review is next.
-Do not start Phase 6 playback until the owner asks to continue.
+Phases 0–6 are accepted by the owner's requests to continue. Phase 7 recovery
+and lifecycle work is implemented locally but its release gate is still open:
+the broad browser suite hit intermittent local 503s, and hosted/device checks
+are unavailable. Do not start Phase 8 before Phase 7 review and verification.
 
 Work one functional phase at a time. A phase is complete only after its
 behavior is implemented, tested, documented, and accepted. Do not build all
 screens first and postpone integration or testing.
+
+Delivery order is now explicit: finish the cross-browser web MVP through
+Phase 10 before starting native N1–N5. During the web stage, hosting, joining,
+and playback must remain usable without installing an app. The later app-first
+iOS/Android stage uses the web as a big-screen display paired by an app-scanned
+QR; native subscriptions follow core app and display functionality. Do not
+implement a web paywall or mandatory app-install gate during the web MVP.
 
 ## Product rules
 

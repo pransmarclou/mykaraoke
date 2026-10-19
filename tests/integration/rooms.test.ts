@@ -4,7 +4,7 @@ import { after, test } from "node:test";
 import { getDb } from "../../src/lib/db";
 import { makeRoomCode } from "../../src/lib/rooms/room-code";
 import { reserveRoomCreationSlot, reserveRoomJoinSlot, RoomCreationRateLimitError, RoomJoinRateLimitError } from "../../src/lib/rooms/rate-limit";
-import { closeHostRoom, createHostRoom, getActiveHostRoom } from "../../src/lib/rooms/repository";
+import { cleanupExpiredRooms, closeHostRoom, createHostRoom, getActiveHostRoom } from "../../src/lib/rooms/repository";
 import { getActiveGuest, joinRoom, leaveRoom, roomAccess, roomParticipants, RoomJoinError, touchGuestPresence } from "../../src/lib/rooms/guests";
 
 const createdRoomIds: string[] = [];
@@ -92,7 +92,7 @@ test("guests join, receive stable scoped identities, distinguish duplicate names
   assert.equal(two.guest.label, "Alex (2)");
   assert.equal((await getActiveGuest(firstRoom.room.code, one.credential))?.id, one.guest.id);
   assert.equal(await getActiveGuest(secondRoom.room.code, one.credential), null);
-  assert.deepEqual(await roomAccess(firstRoom.room.code, firstRoom.credential, undefined), { roomId: firstRoom.room.id, role: "host" });
+  assert.deepEqual(await roomAccess(firstRoom.room.code, firstRoom.credential, undefined), { roomId: firstRoom.room.id, role: "host", expiresAt: firstRoom.room.expiresAt });
   assert.equal((await roomAccess(firstRoom.room.code, undefined, one.credential)).guestId, one.guest.id);
   await assert.rejects(roomAccess(secondRoom.room.code, undefined, one.credential), /access denied/);
   assert.deepEqual((await roomParticipants(firstRoom.room.id)).map((person) => person.label), ["Alex", "Alex (2)"]);
@@ -117,6 +117,22 @@ test("unknown, expired, and ended rooms cannot be joined", async () => {
   createdRoomIds.push(ended.room.id);
   assert.equal(await closeHostRoom(ended.room.code, ended.credential), true);
   await assert.rejects(joinRoom(ended.room.code, "Guest", undefined), (error: unknown) => error instanceof RoomJoinError && error.reason === "ended");
+});
+
+test("cleanup closes expired rooms, revokes sessions, and purges rooms after retention", async () => {
+  const expired = await createHostRoom({ now: new Date(Date.now() - 25 * 60 * 60 * 1000) });
+  const old = await createHostRoom();
+  createdRoomIds.push(expired.room.id, old.room.id);
+  await getDb().query("update public.rooms set created_at = now() - interval '10 days', expires_at = now() - interval '9 days' where id = $1", [old.room.id]);
+  const result = await cleanupExpiredRooms();
+  assert.equal(result.closed >= 2, true);
+  assert.equal(result.deleted >= 1, true);
+  assert.equal(await getActiveHostRoom(expired.credential), null);
+  const session = await getDb().query<{ revoked_at: Date | null }>("select revoked_at from public.room_sessions where room_id = $1", [expired.room.id]);
+  assert.ok(session.rows[0].revoked_at);
+  const purged = await getDb().query("select 1 from public.rooms where id = $1", [old.room.id]);
+  assert.equal(purged.rowCount, 0);
+  assert.deepEqual(await cleanupExpiredRooms(), { closed: 0, deleted: 0 });
 });
 
 test("anonymous and authenticated database roles cannot read or mutate room tables", async () => {

@@ -109,7 +109,7 @@ export async function joinRoom(code: string, displayName: string, previousCreden
   }
 }
 
-export async function roomAccess(code: string, hostCredential: string | undefined, guestCredential: string | undefined): Promise<{ roomId: string; role: "host" | "guest"; guestId?: string }> {
+export async function roomAccess(code: string, hostCredential: string | undefined, guestCredential: string | undefined): Promise<{ roomId: string; role: "host" | "guest"; guestId?: string; expiresAt: Date }> {
   const normalizedCode = normalizeRoomCode(code);
   const roomResult = await getDb().query<{ id: string; status: string; expires_at: Date }>(
     "select id, status, expires_at from public.rooms where code = $1",
@@ -125,7 +125,7 @@ export async function roomAccess(code: string, hostCredential: string | undefine
         and role = 'host' and revoked_at is null and expires_at > now() limit 1`,
       [room.id, hostDigest],
     );
-    if (host.rows[0]) return { roomId: room.id, role: "host" };
+    if (host.rows[0]) return { roomId: room.id, role: "host", expiresAt: room.expires_at };
   }
   const guestDigest = guestCredential ? credentialDigest(guestCredential) : null;
   if (guestDigest) {
@@ -133,7 +133,7 @@ export async function roomAccess(code: string, hostCredential: string | undefine
       "select id from public.room_members where room_id = $1 and credential_hash = $2 and left_at is null limit 1",
       [room.id, guestDigest],
     );
-    if (guest.rows[0]) return { roomId: room.id, role: "guest", guestId: guest.rows[0].id };
+    if (guest.rows[0]) return { roomId: room.id, role: "guest", guestId: guest.rows[0].id, expiresAt: room.expires_at };
   }
   throw new Error("Room access denied");
 }

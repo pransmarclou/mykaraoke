@@ -2,6 +2,7 @@ import { createHash, randomInt, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { getDb } from "@/lib/db";
 import { credentialDigest, newHostCredential, normalizeRoomCode } from "@/lib/rooms/room-code";
+import { commandReplayDecision, playerEventTransition, type PlayerEvent } from "@/lib/playback/rules";
 
 const PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -162,8 +163,9 @@ export async function hostPlaybackCommand(roomId: string, action: HostPlaybackAc
     await lockOpenRoom(client, roomId);
     await ensureState(client, roomId);
     const replay = await client.query<{ action: string }>("select action from public.playback_commands where room_id = $1 and request_key = $2", [roomId, requestKey]);
-    if (replay.rows[0]) {
-      if (replay.rows[0].action !== action) throw new PlaybackError("invalid");
+    const decision = commandReplayDecision(replay.rows[0]?.action, action);
+    if (decision === "reject") throw new PlaybackError("invalid");
+    if (decision === "replay") {
       const value = await snapshot(client, roomId);
       await client.query("commit");
       return value;
@@ -192,7 +194,7 @@ export async function hostPlaybackCommand(roomId: string, action: HostPlaybackAc
   finally { client.release(); }
 }
 
-export type TvPlayerEvent = "playing" | "paused" | "blocked" | "error" | "ended";
+export type TvPlayerEvent = PlayerEvent;
 export async function tvPlayerEvent(roomId: string, credential: string, itemId: string, event: TvPlayerEvent, errorCode?: number): Promise<PlaybackSnapshot> {
   if (!UUID.test(itemId)) throw new PlaybackError("invalid");
   const digest = credentialDigest(credential);
@@ -203,12 +205,13 @@ export async function tvPlayerEvent(roomId: string, credential: string, itemId: 
     await lockOpenRoom(client, roomId);
     const state = await stateForRoom(client, roomId);
     if (!state?.device_hash?.equals(digest)) throw new PlaybackError("forbidden");
-    if (state.current_item_id === itemId) {
-      if (event === "ended") {
+    const transition = playerEventTransition(state.current_item_id, itemId, state.observed, event, state.error_code, errorCode);
+    if (transition !== "ignore") {
+      if (transition === "advance") {
         await client.query("update public.queue_items set status = 'played', position = null, updated_at = now() where id = $1", [itemId]);
         await cueNext(client, roomId);
         await publishQueueChange(client, roomId);
-      } else if (state.observed !== event || (event === "error" && state.error_code !== errorCode)) {
+      } else {
         const code = event === "error" && Number.isInteger(errorCode) ? errorCode : null;
         await client.query("update public.playback_state set observed = $2, desired = case when $2 in ('blocked','error') then 'pause' else desired end, error_code = $3, version = version + 1, updated_at = now() where room_id = $1", [roomId, event, code]);
       }

@@ -110,3 +110,26 @@ export async function closeHostRoom(code: string, credential: string | undefined
     client.release();
   }
 }
+
+export async function cleanupExpiredRooms(now = new Date()): Promise<{ closed: number; deleted: number }> {
+  const client = await getDb().connect();
+  try {
+    await client.query("begin");
+    const closed = await client.query<{ id: string }>(
+      `update public.rooms set status = 'closed', closed_at = $1
+        where status = 'open' and expires_at <= $1 returning id`, [now],
+    );
+    if (closed.rows.length) {
+      const ids = closed.rows.map((room) => room.id);
+      await client.query("update public.room_sessions set revoked_at = $2 where room_id = any($1::uuid[]) and revoked_at is null", [ids, now]);
+      await client.query("update public.playback_state set device_hash = null, pairing_hash = null, pairing_expires_at = null where room_id = any($1::uuid[])", [ids]);
+    }
+    const deleted = await client.query<{ id: string }>("delete from public.rooms where expires_at < $1::timestamptz - interval '7 days' returning id", [now]);
+    await client.query("delete from public.room_creation_limits where window_started_at < $1::timestamptz - interval '2 hours'", [now]);
+    await client.query("delete from public.room_join_limits where window_started_at < $1::timestamptz - interval '2 hours'", [now]);
+    await client.query("delete from public.room_presence where last_seen_at < $1::timestamptz - interval '1 day'", [now]);
+    await client.query("commit");
+    return { closed: closed.rows.length, deleted: deleted.rows.length };
+  } catch (error) { await client.query("rollback"); throw error; }
+  finally { client.release(); }
+}

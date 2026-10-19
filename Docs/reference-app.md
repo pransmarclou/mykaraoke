@@ -10,7 +10,7 @@ Dedicated reference surfaces:
 |---|---|---|
 | Main product | `https://okevideoke.online/` | Landing, value proposition, primary entry points, join path, navigation, and upgrade discovery |
 | Host | `https://okevideoke.online/host` | Room creation, host controls, QR/share flow, queue, playback, and recovery |
-| Paywall | Route/trigger not yet observed | Upgrade entry points, gated capabilities, plans, dismissal, return path, entitlement feedback, and purchase lifecycle |
+| Paywall | Root entry to `/premium` observed; in-party trigger unresolved | Upgrade entry points, gated capabilities, plans, dismissal, return path, entitlement feedback, and purchase lifecycle |
 
 REA will be used to understand the observable main experience, karaoke hosting,
 joining, room-code, QR-code, song-search, queue, playback, and paywall workflows.
@@ -141,7 +141,7 @@ large capture.
 | REF-JOIN-01 | Join from room link | Fresh reference host and separate browser | Attempt room-code joining with a synthetic code observed on the host | Join states and resulting guest surface | Partial: sign-in gate; successful guest flow not observed |
 | REF-JOIN-02 | Reject invalid code | Join entry | Submit a clearly synthetic invalid code once | Validation and recovery state | Observed a premium sign-in modal; expected validation behavior unresolved |
 | REF-QUEUE-01 | Add one search result | Valid host and guest test sessions | Search a common song; add one result once | Search metadata, confirmation, synchronized queue | Partial: host add/current playback observed; guest sync unresolved |
-| REF-PLAY-01 | Start and end playback | One queued item | Use ordinary playback controls | Authority, transitions, next-item behavior, errors | Not run |
+| REF-PLAY-01 | Start and end playback | One queued item | Use ordinary playback controls | Authority, transitions, next-item behavior, errors | Partial: current player and skip observed; actual play/end unverified |
 | REF-RECOVER-01 | Refresh guest | Joined synthetic guest | Refresh once | Identity and room-state recovery behavior | Not run |
 | REF-RECOVER-02 | Refresh host | Active synthetic room | Refresh once | Host/session and playback recovery behavior | Partial: same room code reappeared after browser refresh; backend session behavior unknown |
 | REF-PAY-01 | Discover the paywall | Fresh ordinary session | Follow one visible upgrade action or attempt one clearly labelled premium capability | Trigger, actual route/presentation, dismiss behavior | Observed root navigation to `/premium`; premium action during a party unresolved |
@@ -162,6 +162,7 @@ Add a row for every retained REA result or manual verification source.
 | 2026-10-17 | Browser UI observation | REF-MAIN-02/RECOVER-02/PAY-03 | `/`, `/host`, `/premium` | In-app browser actions | Root Start Session reached `/host`; host refresh retained displayed code; browser back from premium returned to root | Supplemental UI observation, not retained REA Evidence; no backend claim |
 | 2026-10-18 | `ev_b9cc1bd9fef9b00baf678731467a1554dd472993eacbedd3fdd97978efdcf17c` | REF-JOIN-01 preparation | `/host` | REA controlled fresh browser capture | Host displayed a four-character code and QR in a fresh temporary browser profile | Capture did not establish QR destination or whether room persisted after browser cleanup |
 | 2026-10-18 | `ev_0b6bf2a9bede95d91ecdd7be4af6a5be5564beaf38b1bcd0ad1d51db458c96b5` | REF-JOIN-01 attempted | `/` | REA declared fill/click scenario in a separate fresh browser | Submitting the previously displayed synthetic host code opened a “Sign In to Premium” modal; no guest room appeared | Code validity across temporary browser profiles was not established; no credentials entered; anonymous join and identity recovery remain unknown |
+| 2026-10-18 | `ev_22a5b34124c0482c7a28ea2bdc1d5bf402311fbb568aeb4efb4ed3b3fc89c3b4` | REF-PLAY-01 partial | `/host` | REA bounded search/add scenario | Adding a visible result moved it to a current singer surface with a YouTube iframe and host skip control | The capture does not prove video actually played, ended, or advanced; no TV authority or player-error state established |
 
 ## Finding ledger
 
@@ -175,8 +176,9 @@ not the completeness of the application analysis.
 | F-03 | Observation | Host can open Search and add a visible result, which moves to current performance | Search/add REA evidence | High for this single run | Queue and playback will be separate tested phases |
 | F-04 | Observation | Premium is a dedicated `/premium` route with visible account and manual payment instructions | Premium REA evidence | High for visible UI | Keep a distinct future upgrade flow; choose independent billing design |
 | F-05 | Unknown | Guest join behavior and reason for premium sign-in gate are unresolved | Invalid-code and separate-browser join-attempt REA evidence | Low for any general rule | Do not reproduce this gate; implement MyKaraoke's no-account requirement independently |
-| F-06 | MyKaraoke decision | Essential karaoke and accessibility remain free; no ad-free YouTube promise | Product brief and platform boundary | Product decision | Paywall implementation deferred to Phase 10 |
+| F-06 | MyKaraoke decision | Essential karaoke and accessibility remain free; no ad-free YouTube promise | Product brief and platform boundary | Product decision | Subscription implementation deferred until native N4 after the complete web MVP |
 | F-07 | MyKaraoke decision | A host room is persisted for 24 hours and controlled by a private browser credential, never by its public code | F-02 and the bounded host-refresh UI observation establish only visible code/QR/recovery, not backend security | Product decision | Phase 3 implements independently tested persistence, invite destination, and host authorization |
+| F-08 | Observation | Host add can show a current singer, embedded YouTube frame, and skip control | Phase 6 REA search/add capture | High for visible controls; low for actual playback | MyKaraoke implements and tests designated-device playback independently |
 
 Phase 3 reused the existing host-code, QR, and refresh evidence. No new REA
 capture was needed or claimed. The reference still does not establish its QR
@@ -194,6 +196,11 @@ only the visible search-result-to-queue transition. No new reference capture
 was needed or claimed. Singer assignment, queue ordering and authorization,
 Realtime synchronization, quota behavior, and guest search remain MyKaraoke
 decisions verified in MyKaraoke tests, not observations of the reference.
+
+Phase 6 made a bounded `/host` REA search/add capture. The visible iframe and
+skip control informed the flow, but did not establish player success, an end
+event, or device authority. MyKaraoke independently chose an expiring TV
+pairing code and separate device session; its own tests provide those claims.
 
 ## Design translation checklist
 

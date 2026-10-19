@@ -31,6 +31,7 @@ export function songApiError(error: unknown, context: string) {
       stale: [409, "The queue changed on another device. Review the latest order and retry."],
       duplicate: [409, "You already have that song in the queue."],
       limit: [409, "You can have up to three songs queued. Wait for the host to move one on."],
+      limited: [429, "Too many queue changes. Wait a minute and try again."],
       missing: [404, "That queued song is no longer available."],
       ended: [410, "This room has ended or expired."],
     } as const;

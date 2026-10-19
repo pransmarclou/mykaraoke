@@ -14,7 +14,7 @@ export type QueueItem = {
 };
 export type QueueSnapshot = { version: number; items: QueueItem[] };
 export class QueueError extends Error {
-  constructor(public readonly reason: "invalid" | "stale" | "duplicate" | "limit" | "missing" | "ended") { super(reason); }
+  constructor(public readonly reason: "invalid" | "stale" | "duplicate" | "limit" | "limited" | "missing" | "ended") { super(reason); }
 }
 
 type Row = { id: string; youtube_id: string; title: string; channel_title: string; duration_seconds: number; singer_name: string; requested_by: string | null; position: number };
@@ -50,6 +50,18 @@ async function publish(client: PoolClient, roomId: string): Promise<number> {
     [changed.rows[0].queue_version, `queue:${changed.rows[0].queue_topic}`],
   );
   return Number(changed.rows[0].queue_version);
+}
+
+export async function reserveQueueMutation(client: PoolClient, roomId: string, actorKey: string, limit: number, now = new Date()): Promise<void> {
+  const result = await client.query<{ mutations: number }>(
+    `insert into public.queue_mutation_limits (room_id, actor_key, window_started_at, mutations)
+     values ($1, $2, $3, 1)
+     on conflict (room_id, actor_key) do update set
+       window_started_at = case when queue_mutation_limits.window_started_at <= $3::timestamptz - interval '1 minute' then $3 else queue_mutation_limits.window_started_at end,
+       mutations = case when queue_mutation_limits.window_started_at <= $3::timestamptz - interval '1 minute' then 1 else least(queue_mutation_limits.mutations + 1, $4::integer + 1) end
+     returning mutations`, [roomId, actorKey, now, limit],
+  );
+  if (result.rows[0].mutations > limit) throw new QueueError("limited");
 }
 
 export async function queueSnapshot(roomId: string): Promise<QueueSnapshot> {
@@ -91,6 +103,7 @@ export async function addQueueItem(input: { roomId: string; role: "host" | "gues
       const count = await client.query<{ count: string }>("select count(*)::text as count from public.queue_items where room_id = $1 and actor_key = $2 and status in ('queued', 'playing')", [input.roomId, actorKey]);
       if (Number(count.rows[0].count) >= 3) throw new QueueError("limit");
     }
+    await reserveQueueMutation(client, input.roomId, actorKey, input.role === "guest" ? 12 : 40);
     const position = await client.query<{ position: number }>("select coalesce(max(position), 0) + 1 as position from public.queue_items where room_id = $1 and status = 'queued'", [input.roomId]);
     await client.query(
       `insert into public.queue_items (room_id, search_result_id, youtube_id, title, channel_title, duration_seconds, singer_name, requested_by, actor_key, request_key, position)
@@ -115,6 +128,7 @@ export async function mutateQueue(input: { roomId: string; id: string; action: "
     if (version !== input.expectedVersion) throw new QueueError("stale");
     const rows = await rowsForRoom(client, input.roomId);
     if (!rows.some((row) => row.id === input.id)) throw new QueueError("missing");
+    await reserveQueueMutation(client, input.roomId, "host", 40);
     if (input.action === "remove" || input.action === "skip") {
       await client.query("update public.queue_items set status = $3, position = null, updated_at = now() where room_id = $1 and id = $2", [input.roomId, input.id, input.action === "skip" ? "skipped" : "removed"]);
     } else {

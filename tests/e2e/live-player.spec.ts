@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 
 test.skip(process.env.LIVE_PLAYER_CHECK !== "1", "Opt-in live YouTube player smoke check; uses the configured API key and external embed.");
 
-test("one real YouTube video plays on a paired display and the host skips it", async ({ page, browser }) => {
+test("official YouTube sample plays on a paired display and the host skips it", async ({ page, browser }) => {
   test.setTimeout(90_000);
   const db = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
   const tvContext = await browser.newContext();
@@ -33,6 +33,7 @@ test("one real YouTube video plays on a paired display and the host skips it", a
     await expect(tv.getByTestId("tv-player").locator("iframe")).toBeVisible({ timeout: 20_000 });
     await tv.getByRole("button", { name: "Start video" }).click();
     await expect(tv.getByText("Player state: playing")).toBeVisible({ timeout: 30_000 });
+    await tv.screenshot({ path: "test-results/phase6-live-tv.png" });
     await page.getByRole("button", { name: "Skip current" }).click();
     await expect(tv.getByText("Waiting for the next song")).toBeVisible({ timeout: 10_000 });
   } finally {

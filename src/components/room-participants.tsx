@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { Circle, UsersRound } from "lucide-react";
 import { presenceReducer, type Participant } from "@/lib/rooms/presence";
 
 export function RoomParticipants({ code, guest = false }: { code: string; guest?: boolean }) {
   const [{ participants, status }, dispatch] = useReducer(presenceReducer, { participants: [], status: "loading" });
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -18,9 +20,11 @@ export function RoomParticipants({ code, guest = false }: { code: string; guest?
           return;
         }
         if (!response.ok) throw new Error("Presence unavailable");
-        const result = (await response.json()) as { participants: Participant[] };
+        const result = (await response.json()) as { participants: Participant[]; expiresAt: string };
         if (active) {
           dispatch({ type: "snapshot", participants: result.participants });
+          setExpiresAt(result.expiresAt);
+          setNow(Date.now());
         }
       } catch {
         if (active) dispatch({ type: "interrupted" });
@@ -30,15 +34,19 @@ export function RoomParticipants({ code, guest = false }: { code: string; guest?
     void update(guest ? "POST" : "GET");
     const poll = window.setInterval(() => void update("GET"), 5_000);
     const heartbeat = guest ? window.setInterval(() => void update("POST"), 10_000) : undefined;
+    const clock = window.setInterval(() => setNow(Date.now()), 30_000);
     const onReconnect = () => void update(guest ? "POST" : "GET");
     window.addEventListener("online", onReconnect);
     return () => {
       active = false;
       window.clearInterval(poll);
       if (heartbeat) window.clearInterval(heartbeat);
+      window.clearInterval(clock);
       window.removeEventListener("online", onReconnect);
     };
   }, [code, guest]);
+
+  const remaining = expiresAt ? Date.parse(expiresAt) - now : Infinity;
 
   return (
     <section className="feature-panel rounded-[1.75rem] p-6 sm:p-8" aria-labelledby="room-people-title">
@@ -64,6 +72,7 @@ export function RoomParticipants({ code, guest = false }: { code: string; guest?
       {status === "loading" ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading guests…</p> : null}
       {status === "reconnecting" ? <p role="status" className="mt-5 text-sm text-[#ffc16f]">Connection interrupted. Reconnecting…</p> : null}
       {status === "ended" ? <p role="alert" className="mt-5 text-sm text-[#ffb0a2]">This room ended or your access expired. Return to Join to enter a new code.</p> : null}
+      {status === "connected" && remaining > 0 && remaining <= 15 * 60_000 ? <p role="status" className="mt-5 text-sm text-[#ffc16f]">This room expires in {Math.max(1, Math.ceil(remaining / 60_000))} minute(s). Finish your songs or create a new room.</p> : null}
     </section>
   );
 }
