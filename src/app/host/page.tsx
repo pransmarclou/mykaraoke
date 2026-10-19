@@ -12,7 +12,7 @@ import { PlaybackDashboard } from "@/components/playback-dashboard";
 import { MicrophoneStudio } from "@/components/microphone-studio";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { getDb } from "@/lib/db";
+import { hasDatabaseConfiguration } from "@/lib/db";
 import { configuredAppOrigin, HOST_COOKIE_NAME } from "@/lib/rooms/http";
 import { buildJoinUrl } from "@/lib/rooms/room-code";
 import { getActiveHostRoom, type HostRoom } from "@/lib/rooms/repository";
@@ -69,13 +69,15 @@ async function ActiveRoom({ room }: { room: HostRoom }) {
 export default async function HostPage() {
   const cookieStore = await cookies();
   let room: HostRoom | null = null;
-  let available = Boolean(process.env.DATABASE_URL);
-  try {
-    await getDb().query("select 1");
-    room = await getActiveHostRoom(cookieStore.get(HOST_COOKIE_NAME)?.value);
-  } catch (error) {
-    console.error("Host room load failed", { name: error instanceof Error ? error.name : "Unknown", code: (error as { code?: string })?.code });
-    available = false;
+  let available = hasDatabaseConfiguration();
+  const credential = cookieStore.get(HOST_COOKIE_NAME)?.value;
+  if (available && credential) {
+    try {
+      room = await getActiveHostRoom(credential);
+    } catch (error) {
+      console.error("Host room load failed", { name: error instanceof Error ? error.name : "Unknown", code: (error as { code?: string })?.code });
+      available = false;
+    }
   }
 
   return (

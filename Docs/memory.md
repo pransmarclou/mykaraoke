@@ -600,6 +600,46 @@ owner reviews the remaining Phase 7 and Phase 8 evidence.
   ownership/backups and secret rotation, provision a separate hosted test
   project, configure deployment secrets and HTTPS origin, and schedule cleanup.
 
+## Hosted room retry fix — 2026-10-19
+
+- A transient hosted health-check failure could render the host page with a
+  permanently disabled Create button. The database later recovered, but that
+  page instance could not retry without a manual reload.
+- The host page no longer runs an unconditional `select 1` before showing the
+  new-room form. It queries hosted PostgreSQL during render only when a host
+  cookie exists and needs recovery; the creation transaction is the real
+  availability check for a new host.
+- The Create button now stays enabled unless a creation request is already in
+  progress. The warning remains truthful and tells the host that the initial
+  connection failed while allowing the real API request to retry immediately.
+- Eight fresh hosted PostgreSQL connection probes passed in 261–284 ms. After
+  the change, hosted create/persist/authorized-close passed with 201/200. An
+  isolated unreachable-database run showed the warning with Create enabled;
+  after a real 503 response, the button returned to enabled so the host could
+  retry without reloading.
+- The owner then reported the old disabled UI still visible. The running
+  backend had no matching create request and continued returning 200s, proving
+  the stale client never reached the API. The generated `.next` cache was moved
+  to Trash and port 3100 restarted cleanly. Fresh HTML contains no old warning
+  and no disabled attribute on Create; another hosted create/open-row/close
+  check passed with 201/200 after the restart.
+- The owner clarified that the remaining failure was on Vercel production.
+  Production logs showed `ENOTFOUND` while resolving the direct Supabase
+  database hostname. Supabase documents the direct endpoint as IPv6 and its
+  shared transaction pooler as the serverless path. The database adapter now
+  prefers the Vercel/Supabase `POSTGRES_URL`, falls back to `DATABASE_URL` for
+  local or persistent runtimes, and caps each warm Vercel function pool at one
+  connection.
+- Production now has a trusted `x-vercel-forwarded-for` client-IP header and a
+  generated server-only HMAC secret for room-creation rate limiting. Vercel
+  documents that header as platform-generated and equivalent to the public
+  client IP. The secret value remains outside the repository.
+- The production repair added unit coverage for pooled URL selection, local
+  fallback, serverless pool sizing, and missing configuration. Unit tests
+  passed 22/22; lint, typecheck, and the production build passed. Production
+  create/persist/close verification must be recorded after the repaired Vercel
+  deployment becomes Ready.
+
 ## Session handoff template
 
 Append a short entry after future work sessions:
