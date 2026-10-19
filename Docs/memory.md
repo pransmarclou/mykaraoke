@@ -636,8 +636,14 @@ owner reviews the remaining Phase 7 and Phase 8 evidence.
   client IP. The secret value remains outside the repository.
 - The production repair added unit coverage for pooled URL selection, local
   fallback, serverless pool sizing, and missing configuration. Unit tests
-  passed 22/22; lint, typecheck, and the production build passed. Production
-  create/persist/close verification must be recorded after the repaired Vercel
+  passed 22/22; lint, typecheck, and the production build passed. The first
+  repaired deployment reached the shared pooler but exposed
+  `SELF_SIGNED_CERT_IN_CHAIN`: `pg` 8.23 temporarily interprets
+  `sslmode=require` as `verify-full`, while the managed Supabase URL specifies
+  standard libpq `require` semantics. Pooled URLs now opt explicitly into
+  libpq-compatible encrypted mode without disabling TLS; explicit
+  `verify-full` configuration remains unchanged. Production
+  create/persist/close verification must be recorded after the follow-up
   deployment becomes Ready.
 
 ## Session handoff template
