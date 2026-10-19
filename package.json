@@ -9,8 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:unit": "tsx --test tests/unit/*.test.ts",
-    "test:integration": "node --env-file=.env.local --import tsx --test tests/integration/*.test.ts",
-    "test:e2e": "playwright test",
+    "test:integration": "node --env-file=.env.local --import tsx scripts/run-database-tests.ts integration",
+    "test:e2e": "node --env-file=.env.local --import tsx scripts/run-database-tests.ts e2e",
     "cleanup:rooms": "node --env-file=.env.local --import tsx scripts/cleanup-rooms.ts"
   },
   "dependencies": {

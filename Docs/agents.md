@@ -7,9 +7,14 @@ MyKaraoke. Read this file first, followed by `project.md`, `memory.md`,
 ## Current instruction
 
 Phases 0–6 are accepted by the owner's requests to continue. Phase 7 recovery
-and lifecycle work is implemented locally but its release gate is still open:
-the broad browser suite hit intermittent local 503s, and hosted/device checks
-are unavailable. Do not start Phase 8 before Phase 7 review and verification.
+and lifecycle work is implemented but its release gate is still open: the
+broad browser suite hit intermittent 503s, and HTTPS/device checks remain
+unavailable. Hosted Supabase is now the MVP source of truth; local Supabase is
+not the normal development path. Database-mutating tests require a separate
+hosted test project and its exact `MYKARAOKE_TEST_DB_HOST` allowlist. The owner
+explicitly advanced work into Phase 8 on 2026-10-19.
+Phase 8 is implemented with mocked browser verification, but must not be called
+accepted until its real hardware matrix and feedback/latency checks pass.
 
 Work one functional phase at a time. A phase is complete only after its
 behavior is implemented, tested, documented, and accepted. Do not build all

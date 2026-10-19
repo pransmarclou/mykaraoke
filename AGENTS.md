@@ -5,13 +5,17 @@ context, current state, reference evidence, and functional phase gates live in
 `Docs/project.md`, `Docs/memory.md`, `Docs/reference-app.md`, and
 `Docs/build-phases.md`.
 
-Current scope: Phase 7 lifecycle and reconnection are implemented locally,
-but the broad browser and nonproduction release gate is still pending.
-Physical smart TVs, microphones, and payments remain unverified or unbuilt.
-Keep controls honest and update `Docs/memory.md` at each gate.
+Current scope: Phase 8 Local Microphone Studio is implemented in the host room
+with mocked browser verification. Real Mac/Windows, built-in, USB, Bluetooth,
+latency, and feedback checks remain required before acceptance. Phase 7's
+deployment/device verification also remains open. Keep controls honest and
+update `Docs/memory.md` at each gate.
+Hosted Supabase is the MVP source of truth. Do not start or depend on the local
+Supabase stack for normal work, and never run database-mutating test suites
+against live MVP data; use a separately allowlisted hosted test project.
 Finish the cross-browser web MVP before the later iOS/Android app and native
 subscription track; see `Docs/build-phases.md` for the revised gates.
-Do not start Phase 8 until the Phase 7 gate is reviewed.
+Do not start Phase 9 until the remaining Phase 7 and Phase 8 gates are reviewed.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

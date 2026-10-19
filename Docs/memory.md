@@ -7,14 +7,15 @@ to evidence or code rather than restating large documents.
 ## Snapshot
 
 - Last updated: 2026-10-19
-- Current stage: Phase 7 — MVP lifecycle, reconnection, and release gate
-- Current status: Phase 7 implemented locally; verification pending after broad browser-suite instability
-- Repository state: Git initialized on `main` during Phase 2; current Phase 7
-  changes are in the working tree and have not been committed by this handoff
-- Current phase gate: Stabilize the broad local browser run and verify a nonproduction deployment before Phase 7 acceptance
+- Current stage: Phase 8 — Local Microphone Studio
+- Current status: Phase 8 implemented; real hardware verification pending
+- Repository state: Phase 7 is committed and pushed to `main`; Phase 8 changes
+  are in the working tree and have not been committed by this handoff
+- Current phase gate: Verify microphone behavior and measured latency on the
+  documented real-device matrix; Phase 7 deployment/device checks remain open
 - Delivery direction: Finish the phone/laptop/TV-browser web MVP through Phase
   10; only then begin the installed iOS/Android N1–N5 track and native
-  subscriptions. The owner subsequently asked to continue into Phase 7.
+  subscriptions. The owner explicitly advanced work into Phase 8 on 2026-10-19.
 - Primary reference target: `https://okevideoke.online/`
 - Dedicated host reference: `https://okevideoke.online/host`
 - Paywall reference: Visible `/premium` route and root-page entry observed;
@@ -50,6 +51,10 @@ to evidence or code rather than restating large documents.
   host flow, and the paywall/upgrade flow.
 - Owner-provided microphone mark and MyKaraoke wordmark are the source of truth
   for branding; the current shell uses their yellow-to-pink colors.
+- Planned Native N4 monetization: Free starts with 10 qualifying song credits;
+  an explicitly accepted, successfully verified Google rewarded ad grants 10
+  more. Premium provides unlimited MyKaraoke song credits and removes
+  MyKaraoke ads. YouTube may still serve its own in-player ads.
 
 ## Non-negotiable constraints
 
@@ -73,16 +78,16 @@ them at the phase that first needs them.
 | Decision | Needed by | Status |
 |---|---|---|
 | Package manager and supported Node.js version | Foundation | Resolved: npm lockfile, Node.js >=20.9 per Next.js package engine |
-| Supabase local vs hosted development workflow | Room lifecycle | Resolved for development: native local Supabase database plus Realtime |
-| Supabase project and credentials | Hosted integration | Open; no MyKaraoke project exists and unrelated projects were not touched |
+| Supabase local vs hosted development workflow | Room lifecycle | Resolved 2026-10-19: hosted Supabase is the MVP source of truth; the local stack was stopped and removed from the normal workflow |
+| Supabase project and credentials | Hosted integration | Active in ignored `.env.local`; hosted create/persist/authorized-close smoke test passed. Hosted migration history, backup ownership, credential rotation, and deployment secret configuration still require review |
 | YouTube API project/key and quota strategy | Song search | A key is configured in ignored local `.env.local` and live search passed; project ownership and hosted key/quota strategy remain open. Local 50 uncached searches/day and 30 requests/actor/day with 15-minute cache implemented |
 | Anonymous participant identity/session design | Guest joining | Resolved locally: per-browser random HttpOnly guest credential, SHA-256 digest in `room_members`, scoped to one active room |
 | Deployment Vercel project and environments | Launch readiness | Open |
 | Analytics and error-reporting provider | Observability | Open |
 | TURN provider and operating budget | Optional native N3 remote microphone | Open |
 | Physical device test inventory | Audio/compatibility | Open |
-| Native store products, pricing, and billing model | Native N4 | Open |
-| Free/Pro entitlement boundary | Native N4 | Open pending policy review |
+| Native store products, pricing, and billing model | Native N4 | Partially resolved: Premium removes MyKaraoke ads and provides unlimited MyKaraoke song credits; product IDs, price, billing period, trials, and restore rules remain open |
+| Free/Premium entitlement boundary | Native N4 | Partially resolved: Free starts with 10 song credits and a verified, voluntary Google rewarded ad grants 10 more; reset window, frequency cap, no-fill fallback, and account/device scope remain open |
 | Native framework and app identity migration | Native N1 | Open; preserve web anonymous sessions until an approved transition |
 | Web host/guest availability after app launch | Native N5 | Open; owner said app-first, but mandatory-install timing and fallback policy require explicit approval after parity |
 | Display QR claim design and device inventory | Native N2 | Planned: one-use expiring web-display claim scanned by the app; real iOS/Android and named TV hardware required |
@@ -225,23 +230,28 @@ them at the phase that first needs them.
 
 ## Active blockers
 
-Phase 7 cannot be accepted yet. The isolated desktop and mobile four-session
-journeys passed, but a broad serial browser run intermittently returned 503
-from local search/room endpoints. A nonproduction deployment, scheduled cleanup,
-trusted proxy IP header, HTTPS origin, and real cross-device checks remain
-unverified. The configured `.env.local` points at a separate hosted database;
-Phase 7's additive migration was applied only to the native local stack. Do
-not run Phase 7 code against that other database until its ownership and
-migration plan are confirmed. Rotate or restrict the key shared in chat before
-production. Physical smart-TV behavior and video-specific embed failures
-remain unresolved.
+Phase 8 cannot be accepted yet because no real microphone hardware was used.
+The Mac/Windows built-in, USB/audio-interface, available Bluetooth, feedback,
+device-loss, and measured-latency matrix remains open. Automated tests use
+declared MediaDevices and AudioContext fixtures and do not prove acoustic or
+driver behavior.
+
+Phase 7 also cannot be accepted yet. The isolated desktop and mobile four-session
+journeys passed, but a broad serial browser run intermittently returned 503.
+Hosted room create/persist/authorized-close now passes against the configured
+Supabase project, but a deployed HTTPS app, hosted cleanup schedule, trusted
+proxy IP header, separate hosted test project, migration-history review, and
+real cross-device checks remain unverified. Rotate or restrict the key shared
+in chat before production. Physical smart-TV behavior and video-specific embed
+failures remain unresolved.
 
 ## Next approved action
 
-Reproduce/classify the intermittent local 503, rerun the full browser suite,
-then validate the multi-device journey on a MyKaraoke nonproduction HTTPS
-deployment with hourly cleanup scheduled. Request owner review at that gate;
-do not begin Phase 8 yet.
+Owner performs or authorizes the Phase 8 real-hardware matrix while engineering
+also validates hosted migration history and a separate online test project,
+reproduces the Phase 7 intermittent 503, reruns the full browser suite there,
+and validates a MyKaraoke HTTPS deployment. Do not begin Phase 9 until the
+owner reviews the remaining Phase 7 and Phase 8 evidence.
 
 ## Decision log
 
@@ -277,6 +287,9 @@ do not begin Phase 8 yet.
 | 2026-10-19 | Finish the cross-browser web MVP before native development | Owner clarified delivery order and device strategy | Phase 10 becomes the web compatibility/launch gate; native N1–N5 start afterward; current Phase 6 review is unchanged |
 | 2026-10-19 | Plan an app-scanned QR shown by the future web display | Owner wants phones to initiate big-screen use after native launch | Native N2 adds a one-use display claim and app confirmation; current manual TV pairing stays as web-MVP behavior |
 | 2026-10-19 | Move subscriptions out of the web MVP into native N4 | Owner wants native iOS/Android subscription focus after web completion | Web remains usable without app install or payment; native purchase and server entitlement rules get separate gates |
+| 2026-10-19 | Proceed into Phase 8 while retaining Phase 7 limitations | Owner explicitly requested the next phase after Phase 7 was pushed | Build local microphone behavior now; keep deployment/device gaps visible and do not claim either gate complete |
+| 2026-10-19 | Set the future Free/Premium song-credit model | Owner chose 10 free songs, another 10 after a Google rewarded ad, and Premium without MyKaraoke ads | Document it for native N4; keep the current web MVP ungated, require explicit opt-in and verified rewards, and do not promise removal of YouTube ads |
+| 2026-10-19 | Make hosted Supabase the MVP source of truth | Owner explicitly asked to prioritize online Supabase and drop local | Removed the development-only local override, stopped the local stack without deleting its preserved data, verified hosted room create/persist/close, and require a separate hosted test project for destructive suites |
 
 ## 2026-10-17 session handoff
 
@@ -524,7 +537,68 @@ do not begin Phase 8 yet.
   the web MVP gate.
 - Next: Diagnose the intermittent local 503; run the complete suite and
   schema lint, then nonproduction deployment and real-device checks. Stop at
-  Phase 7 review before Phase 8.
+  the combined Phase 7/8 review before Phase 9.
+
+## Phase 8 implementation handoff — 2026-10-19
+
+- Completed: Host-only local Microphone Studio with secure-context and browser
+  capability onboarding; explicit permission request; browser-visible input
+  selection and device-change handling; live meter; bounded input gain,
+  monitor volume, mute, compression, and reverb; deliberate monitor start;
+  permission denial, missing/busy input, track loss, suspended AudioContext,
+  and unsupported output-selection guidance.
+- Audio boundary: `getUserMedia` feeds a local Web Audio graph. Output gain is
+  zero until the host starts monitoring. Audio is not recorded, uploaded,
+  stored, sent through Supabase, or mixed into the YouTube player.
+- Tests: typecheck, lint, production build, and unit 19/19 passed. Four focused
+  Playwright journeys passed in desktop and mobile Chromium: denied permission
+  plus successful built-in/USB switching, meter, processing controls,
+  monitoring, suspension recovery, disconnect, and retry. MediaDevices and
+  AudioContext were explicit test fixtures, not physical hardware.
+- Manual/device: No actual microphone permission was requested on the owner's
+  computer. No real Mac, Windows, built-in mic, USB interface, Bluetooth route,
+  speaker feedback, or end-to-end latency was tested or measured.
+- Decisions: Microphone Studio lives inside an active host room for this slice;
+  output follows the system default; per-device output routing and remote phone
+  microphones remain out of scope. Device type does not imply a latency claim.
+- Known limitations: Real driver/browser behavior, acoustic feedback, output
+  routing, and latency remain unverified. Phase 7's broad suite and deployment
+  blockers also remain open.
+- Next: Complete the real hardware matrix and remaining Phase 7 release checks,
+  then request owner review before Phase 9.
+
+## Native N4 monetization planning note — 2026-10-19
+
+- Documentation only: no ad SDK, billing code, schema, Google ad account, store
+  product, or live entitlement was added.
+- Free users begin with 10 qualifying song-play credits. A separately disclosed
+  and voluntarily accepted Google rewarded ad grants the next 10 credits only
+  after a trusted completion/reward event.
+- Premium removes MyKaraoke display and rewarded ads and provides unlimited
+  MyKaraoke song credits while the entitlement is active. It does not control
+  or promise removal of ads inside the official YouTube player.
+- Still open for Native N4: credit reset window and timezone, maximum rewarded
+  blocks/frequency cap, no-fill behavior, account/device/room ownership,
+  Premium price and billing period, and cross-platform entitlement recovery.
+
+## Hosted Supabase MVP handoff — 2026-10-19
+
+- Owner made hosted Supabase the MVP source of truth and asked to drop the
+  local workflow. The ignored development-only local override was removed and
+  `supabase stack stop` stopped local services without deleting preserved data.
+- `next dev` loaded only `.env.local`. A real `POST /api/rooms` returned 201,
+  the new room was confirmed as an open row in hosted PostgreSQL, and the
+  authorized close route returned 200. The temporary smoke-test room was
+  closed afterward.
+- The host browser restored an existing hosted room and loaded playback,
+  queue, and participant snapshots successfully. The unavailable-state copy
+  now refers to the hosted service rather than a local database.
+- Typecheck, lint, production build, and unit 19/19 passed. The new database
+  test guard correctly refused to run integration tests against the live
+  hosted database.
+- Still open: establish trustworthy hosted migration history, confirm project
+  ownership/backups and secret rotation, provision a separate hosted test
+  project, configure deployment secrets and HTTPS origin, and schedule cleanup.
 
 ## Session handoff template
 

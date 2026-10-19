@@ -53,7 +53,7 @@ export default function HomePage() {
             </div>
             <p className="mt-6 flex items-center gap-2 text-sm text-[#a99ca4]">
               <Radio className="size-4 text-[#ffb33c]" aria-hidden="true" />
-              Rooms and joining are live. Song search and playback are next.
+              Rooms, shared songs, TV playback, and local Microphone Studio are live.
             </p>
           </div>
           <StageIllustration />

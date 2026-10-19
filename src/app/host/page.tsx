@@ -9,6 +9,7 @@ import { HostRoomActions } from "@/components/host-room-actions";
 import { RoomParticipants } from "@/components/room-participants";
 import { RoomSongQueue } from "@/components/room-song-queue";
 import { PlaybackDashboard } from "@/components/playback-dashboard";
+import { MicrophoneStudio } from "@/components/microphone-studio";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/lib/db";
@@ -48,6 +49,7 @@ async function ActiveRoom({ room }: { room: HostRoom }) {
           <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4 text-[#ffb65a]" aria-hidden="true" />This room expires <time dateTime={room.expiresAt.toISOString()}>{room.expiresAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Chicago" })} CT</time>.</p>
         </div>
         <p className="mt-5 max-w-xl text-sm leading-6 text-muted-foreground">Guests can now open the link or QR, choose a display name, and join this room.</p>
+        <div className="mt-8 max-w-2xl"><MicrophoneStudio /></div>
         <div className="mt-8 max-w-2xl"><PlaybackDashboard code={room.code} role="host" tvUrl={`${configuredAppOrigin()}/tv/${room.code}`} /></div>
         <div className="mt-8 max-w-2xl"><RoomSongQueue code={room.code} role="host" singer="Host" /></div>
         <div className="mt-8 max-w-2xl"><RoomParticipants code={room.code} /></div>

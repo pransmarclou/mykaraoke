@@ -6,7 +6,7 @@ test("landing page routes to the two entry experiences", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     /Your songs\.Your stage\.Your party\./,
   );
-  await expect(page.getByText("Rooms and joining are live. Song search and playback are next.")).toBeVisible();
+  await expect(page.getByText("Rooms, shared songs, TV playback, and local Microphone Studio are live.")).toBeVisible();
 
   await page.getByRole("link", { name: "Explore hosting" }).click();
   await expect(page).toHaveURL(/\/host$/);

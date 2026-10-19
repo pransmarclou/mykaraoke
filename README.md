@@ -3,14 +3,15 @@
 **Your songs. Your stage. Your party.**
 
 MyKaraoke is a web-first karaoke party platform by Nook Studio. The current
-Phase 7 implementation lets a host create a temporary room, guests join, and everyone
+Phase 8 implementation lets a host create a temporary room, guests join, and everyone
 see a shared roster and song queue. With a server YouTube API key, guests can
 search for embeddable karaoke videos, assign a singer, and add up to three
 active songs. The host can reorder, skip, or remove entries. A paired TV/browser
 can play through the official YouTube player while the host controls playback.
-Live local search and a desktop sample-video playback check passed. Lifecycle
-recovery is implemented locally but broad release verification is pending;
-microphones and payments are planned in
+Live local search and a desktop sample-video playback check passed. The host
+room now includes a local-only Microphone Studio with input selection, meter,
+gain, mute, monitoring, compression, and reverb. Lifecycle release checks and
+real microphone hardware verification remain pending; payments are planned in
 [the functional build phases](Docs/build-phases.md).
 
 Delivery order: finish a usable browser MVP for phones, laptops, and supported
@@ -19,32 +20,35 @@ party interface, with a QR shown on the web big screen for the app to scan.
 Native subscriptions come after the app and screen handoff work; no app
 download or payment is required in the current web MVP.
 
-## Run locally
+Planned Native N4 monetization is not implemented yet. Free starts with 10
+qualifying song credits, and a user may explicitly choose a Google rewarded ad
+to unlock 10 more. Premium provides unlimited MyKaraoke song credits and removes
+MyKaraoke display and rewarded ads. It cannot remove or promise the absence of
+ads served inside the official YouTube player. Reset timing, rewarded-ad caps,
+no-fill behavior, and Premium pricing remain open product decisions.
 
-Requires Node.js 20.9 or newer, npm, and Supabase CLI 2.119 or newer. The
-native local stack works on macOS Apple Silicon or supported Linux without
-Docker; other systems need a Docker-compatible runtime. The lockfile is the
-source of truth for application dependency versions.
+## Run the web app
+
+Requires Node.js 20.9 or newer, npm, and access to the intended MyKaraoke
+hosted Supabase project. The hosted project is the MVP source of truth; a local
+Supabase stack is not part of the normal workflow. The lockfile is the source
+of truth for application dependency versions.
 
 ```bash
 npm ci
-supabase stack start --runtime native --exclude rest,auth,storage,functions,studio,mail,analytics,pooler --eager
-supabase migration up --local
 cp -n .env.example .env.local
 npm run dev -- --hostname 127.0.0.1 --port 3100
 ```
 
-Open [http://127.0.0.1:3100/host](http://127.0.0.1:3100/host). The local stack
-uses development-only database credentials; no hosted project or account is
-used. `cp -n` leaves an existing `.env.local` (including its secret) untouched.
-On systems with Docker, omit `--runtime native`. Copy `DB_URL` to
-`DATABASE_URL` and `ANON_KEY` to `SUPABASE_ANON_KEY` from
-`supabase stack status --env`; the latter is browser-safe, unlike the service
-key. Keep `.env.local` ignored. The Realtime URL is `SUPABASE_URL`. If you
-previously started a database-only stack, `supabase stack stop` preserves data;
-then run the updated start command and apply pending migrations. Do not commit
-production connection strings or private keys. Localhost invites are
-same-computer previews; phones need a deployed HTTPS origin.
+Open [http://127.0.0.1:3100/host](http://127.0.0.1:3100/host). Configure the
+server-only hosted PostgreSQL connection as `DATABASE_URL`, the project URL as
+`SUPABASE_URL`, and the browser-safe anon key as `SUPABASE_ANON_KEY` in ignored
+`.env.local`. Keep the database password, service-role key, and YouTube key out
+of client code and Git. `cp -n` leaves an existing `.env.local` untouched.
+Apply additive migrations to the intended hosted project through a reviewed
+migration step; never point a development command at an unrelated project.
+Localhost invites remain same-computer previews; phones need the deployed HTTPS
+origin.
 
 To enable live song search, configure a MyKaraoke-specific YouTube Data API v3
 key as server-only `YOUTUBE_API_KEY` in `.env.local`, then restart Next.js. The
@@ -66,26 +70,47 @@ npm run test:unit
 npm run test:integration
 npx playwright install chromium
 npm run test:e2e
-supabase db lint --local
-# Optional, with network access: LIVE_PLAYER_CHECK=1 npx playwright test tests/e2e/live-player.spec.ts --project=desktop-chromium
+# Optional on the hosted test project, with network access:
+# LIVE_PLAYER_CHECK=1 npm run test:e2e -- tests/e2e/live-player.spec.ts --project=desktop-chromium
 ```
 
-Integration tests require the local database and Realtime service with
-`.env.local` configured. Playwright checks multi-context guest search and
+Integration tests mutate and clean up database rows, so run them only against a
+separate hosted test project with the same migrations—not the live MVP data
+project. Both `test:integration` and `test:e2e` refuse to start unless
+`MYKARAOKE_TEST_DB_HOST` exactly matches that test database hostname.
+Playwright checks multi-context guest search and
 queueing with clearly seeded YouTube metadata fixtures, host ordering, guest
 authorization denial, TV pairing, simulated player events, room creation/joining,
-roster recovery, small-screen overflow, and automated WCAG A/AA rules. A
+roster recovery, mocked microphone permission/device recovery, small-screen
+overflow, and automated WCAG A/AA rules. A
 separate opt-in check played the official YouTube IFrame API sample in desktop
 Chromium on a paired browser context. Physical-phone QR scanning, real network
-interruption, hosted-domain joining, smart-TV playback, and microphones remain
-untested.
+interruption, hosted-domain joining, smart-TV playback, and real microphones
+remain untested.
 
 Phase 7 adds a host/two-guests/TV browser journey with emulated offline/online
 recovery, independent reloads, and host closure. That isolated journey passed
 in desktop and mobile Chromium. The longer full browser run hit intermittent
-local 503s and must pass before the release gate. Confirm `DATABASE_URL` points
-to the local Supabase database before tests or migrations; do not migrate an
-unrelated hosted project.
+503s and must pass before the release gate. Confirm `DATABASE_URL` points to a
+designated hosted test project before running destructive integration or E2E
+tests; do not run cleanup-oriented suites against live MVP data.
+
+## Local Microphone Studio
+
+After creating a room, the host can explicitly enable a browser-visible input,
+watch a local level meter, switch inputs, adjust gain and monitor volume, mute,
+enable light compression, and add basic room reverb. Monitoring remains off
+until the host presses **Start monitoring**, and the UI warns that speakers can
+create loud feedback. Microphone audio stays in the browser and is neither
+uploaded nor recorded; it remains a separate Web Audio path from YouTube.
+
+Microphone capture requires HTTPS or localhost. Device labels and USB/audio
+interfaces appear only when the browser and operating system expose them.
+Output follows the system default in this phase. Wireless latency is not
+inferred from a device name. Permission denial, missing or lost inputs, and a
+suspended audio context have recovery states. These flows passed mocked desktop
+and mobile Chromium tests, but no real Mac/Windows microphone, USB interface,
+Bluetooth route, latency, or acoustic-feedback check has been performed.
 
 ## Room security and lifecycle
 
@@ -110,10 +135,10 @@ host per minute; failed version conflicts do not consume a slot.
 TV pairing authority, removes stale presence/attempt counters, and purges
 rooms seven days after expiry. It must run with a server-only `DATABASE_URL`;
 schedule it hourly in the eventual nonproduction/production environment. The
-script is implemented, but no hosted scheduler or MyKaraoke-specific hosted
-Supabase project has been configured or verified. The CLI refuses a hosted
-database unless `MYKARAOKE_CLEANUP_DB_HOST` matches its exact hostname, so
-the configured database must be checked before scheduling it.
+script is implemented, but no hosted scheduler has been configured or verified.
+The CLI refuses a hosted database unless `MYKARAOKE_CLEANUP_DB_HOST` matches
+its exact hostname, so the intended MVP project must be checked before
+scheduling it.
 
 ## Guest presence and host departure
 

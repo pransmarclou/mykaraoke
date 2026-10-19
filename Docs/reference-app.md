@@ -176,7 +176,7 @@ not the completeness of the application analysis.
 | F-03 | Observation | Host can open Search and add a visible result, which moves to current performance | Search/add REA evidence | High for this single run | Queue and playback will be separate tested phases |
 | F-04 | Observation | Premium is a dedicated `/premium` route with visible account and manual payment instructions | Premium REA evidence | High for visible UI | Keep a distinct future upgrade flow; choose independent billing design |
 | F-05 | Unknown | Guest join behavior and reason for premium sign-in gate are unresolved | Invalid-code and separate-browser join-attempt REA evidence | Low for any general rule | Do not reproduce this gate; implement MyKaraoke's no-account requirement independently |
-| F-06 | MyKaraoke decision | Essential karaoke and accessibility remain free; no ad-free YouTube promise | Product brief and platform boundary | Product decision | Subscription implementation deferred until native N4 after the complete web MVP |
+| F-06 | MyKaraoke decision | Free starts with 10 qualifying song credits; each explicitly accepted and verified Google rewarded ad grants 10 more; Premium removes MyKaraoke ads and provides unlimited MyKaraoke credits, without promising ad-free YouTube playback | Product brief, owner decision, and platform boundary | Product decision | Monetization is deferred until native N4 after the complete web MVP and requires provider-policy review, trusted reward verification, and independent tests |
 | F-07 | MyKaraoke decision | A host room is persisted for 24 hours and controlled by a private browser credential, never by its public code | F-02 and the bounded host-refresh UI observation establish only visible code/QR/recovery, not backend security | Product decision | Phase 3 implements independently tested persistence, invite destination, and host authorization |
 | F-08 | Observation | Host add can show a current singer, embedded YouTube frame, and skip control | Phase 6 REA search/add capture | High for visible controls; low for actual playback | MyKaraoke implements and tests designated-device playback independently |
 
@@ -201,6 +201,12 @@ Phase 6 made a bounded `/host` REA search/add capture. The visible iframe and
 skip control informed the flow, but did not establish player success, an end
 event, or device authority. MyKaraoke independently chose an expiring TV
 pairing code and separate device session; its own tests provide those claims.
+
+The reference application's Premium marketing does not establish control over
+ads served inside an embedded YouTube player. MyKaraoke therefore defines
+"no ads" as no MyKaraoke-owned display or rewarded ads. YouTube advertising,
+availability, and playback policy remain controlled by YouTube and are outside
+the Premium entitlement promise.
 
 ## Design translation checklist
 

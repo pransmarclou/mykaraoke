@@ -18,7 +18,7 @@ export function HostCreateForm({ available }: { available: boolean }) {
       if (!response.ok) throw new Error("Room creation failed");
       router.refresh();
     } catch {
-      setError("Could not create a room. Check the local database and try again.");
+      setError("Could not create a room. Check the hosted service connection and try again.");
     } finally {
       setPending(false);
     }
@@ -30,7 +30,7 @@ export function HostCreateForm({ available }: { available: boolean }) {
         {pending ? <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-5" aria-hidden="true" />}
         {pending ? "Creating your room…" : "Create a room"}
       </Button>
-      {!available ? <p role="alert" className="mt-4 text-sm text-[#ffb0a2]">Room creation is unavailable until the local database is running.</p> : null}
+      {!available ? <p role="alert" className="mt-4 text-sm text-[#ffb0a2]">Room creation is temporarily unavailable because the hosted service cannot be reached.</p> : null}
       {error ? <p role="alert" className="mt-4 text-sm text-[#ffb0a2]">{error}</p> : null}
     </div>
   );

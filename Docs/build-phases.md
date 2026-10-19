@@ -327,6 +327,10 @@ full multi-device journey passes without fake or manually edited state.
 
 ## Phase 8 — Local Microphone Studio
 
+**Status (2026-10-19): Implemented; real hardware verification pending.** The
+software slice and mocked desktop/mobile browser recovery checks pass. The
+acceptance gate remains open until the stated physical-device matrix is run.
+
 ### User-facing outcome
 
 A host can grant microphone permission, select a browser-visible input, see a
@@ -544,36 +548,57 @@ and latency threshold is met.
 
 ### User-facing outcome
 
-The free app can run the core party. An optional native subscription unlocks
-only approved Pro features; purchase, restore, cancellation, and entitlement
-changes stay consistent between iOS, Android, and the paired web display.
+The free app can run the core party with an initial 10-song allowance. A user
+can voluntarily complete a Google-served rewarded ad to unlock another block
+of 10 song credits. Premium removes MyKaraoke ads, provides unlimited
+MyKaraoke song credits, and unlocks only approved Premium features; purchase,
+restore, cancellation, reward grants, and entitlement changes stay consistent
+between iOS, Android, and the paired web display. YouTube may still serve its
+own advertisements inside the official player.
 
 ### Scope
 
-- Decide the Free/Pro matrix, prices, account model, legal text, and whether
-  web host/guest access changes after native launch; obtain owner approval.
+- Finalize the remaining Free/Premium decisions: allowance reset window,
+  rewarded-block/frequency cap, no-fill behavior, prices, account model, legal
+  text, and whether web host/guest access changes after native launch; obtain
+  owner approval.
 - Recheck current Apple, Google Play, and YouTube rules immediately before
   implementation. Use the applicable native store purchase systems and
   server-verified, idempotent subscription events rather than a cosmetic gate.
+- Integrate the platform-appropriate Google rewarded-ad product using test ads
+  during development. Show a clear voluntary prompt between songs on the
+  personal controller, grant exactly 10 credits only after a verified reward
+  event, and never place MyKaraoke ads over the YouTube player or shared stage.
+- Count a credit only on the first authoritative `playing` event for an
+  eligible song. Queue changes, retried events, skipped-before-play videos, and
+  player failures must not double-charge or consume a credit.
 - Keep ordinary YouTube viewing, core karaoke, accessibility, and safety
-  outside the paywall; never sell ad-free or bypassed YouTube playback.
+  available after an allowance is exhausted; prevent only new uncredited song
+  starts. Never sell ad-free or bypassed YouTube playback.
 - Preserve room context through purchase, cancel, failure, restore, expiry,
-  grace period, and cross-device sign-in.
+  grace period, ad decline/no-fill, reward verification, and cross-device
+  sign-in.
 
 ### Tests and verification
 
-- Unit/integration: capability matrix, provider event replay/order, grants,
-  revocation, account linkage, and cross-platform entitlement refresh.
+- Unit/integration: capability matrix, 10-credit blocks, authoritative
+  consumption, failed-video exclusion, ad reward replay/order, duplicate and
+  forged callback rejection, grants, revocation, account linkage, and
+  cross-platform entitlement refresh.
 - Store sandbox/test-mode end-to-end flows on both platforms, including
-  purchase, restore, cancel, billing failure, and entitlement loss.
-- Security/policy review of server authorization, purchase verification,
-  disclosure, and the current YouTube/player restrictions.
+  purchase, restore, cancel, billing failure, entitlement loss, rewarded-ad
+  completion, dismissal, and no-fill recovery.
+- Security/policy review of server authorization, purchase and reward
+  verification, disclosures, child/privacy requirements, frequency limits, and
+  the current Google Ads and YouTube/player restrictions.
 
 ### Acceptance gate
 
-Real store test environments prove purchase through entitlement loss on both
-platforms; free parties still work. Production billing waits for explicit
-owner approval of pricing, terms, and platform review.
+Real store and Google test-ad environments prove purchase through entitlement
+loss and 10-credit reward grants on both platforms. Free parties still work,
+declining an ad preserves existing state, and Premium removes MyKaraoke ads
+without claiming ad-free YouTube. Production billing and ads wait for explicit
+owner approval of pricing, reset/cap rules, terms, and platform review.
 
 ---
 
@@ -620,8 +645,8 @@ Update this table only with evidence, never optimism.
 | 4 | ACCEPTED | Unit 7/7, integration 8/8, Playwright 16/16 and static/schema checks passed 2026-10-18 | Local browser host/guest roster and refresh checked; physical phone untested | Owner asked to proceed to Phase 5, 2026-10-18 |
 | 5 | ACCEPTED | Unit 11/11 after thumbnail refinement, integration 13/13, Playwright 18/18 and static/schema checks passed 2026-10-18 | Live local YouTube search and loaded thumbnails checked; no live playback claim | Owner asked to proceed to Phase 6, 2026-10-18 |
 | 6 | ACCEPTED | Unit 15/15, integration 16/16, Playwright 20/20 and static/schema checks passed 2026-10-18 | Official sample played in desktop Chromium; two karaoke embeds failed; physical TV untested | Owner asked to continue, 2026-10-19 |
-| 7 | IMPLEMENTED, VERIFICATION PENDING | Unit 15/15, integration 18/18, lint/typecheck/DB lint, production build, and isolated desktop/mobile four-session journeys passed; broad browser run hit intermittent local 503s | No hosted HTTPS, physical phone, or TV-browser checks | Owner review pending |
-| 8 | NOT STARTED | — | — | — |
+| 7 | IMPLEMENTED, VERIFICATION PENDING | Unit 15/15, integration 18/18, lint/typecheck/DB lint, production build, and isolated desktop/mobile four-session journeys passed; hosted create/persist/authorized-close smoke passed 2026-10-19; broad browser run previously hit intermittent 503s | No deployed HTTPS, separate hosted test project, physical phone, or TV-browser checks | Owner review pending |
+| 8 | IMPLEMENTED, VERIFICATION PENDING | Unit 19/19, lint/typecheck/build, and focused desktop/mobile microphone recovery journeys passed | Real Mac/Windows, built-in, USB, Bluetooth, feedback, and latency checks remain | Owner review pending |
 | 9 | NOT STARTED | — | — | — |
 | 10 | NOT STARTED | — | — | — |
 | N1 | NOT STARTED | — | — | — |

@@ -2,8 +2,9 @@
 
 ## Implementation status
 
-As of 2026-10-19, Phase 7 local lifecycle and recovery work is implemented,
-but its broad browser/deployment verification is pending. A
+As of 2026-10-19, Phase 8 Local Microphone Studio is implemented, but real
+hardware verification is pending. Phase 7's broad browser/deployment gate also
+remains open. A
 host can create a 24-hour room and invite guests. Guests can join, search
 server-verified YouTube metadata when an API key is configured, assign a singer,
 and add to a shared queue. Host-only order, skip, and remove actions are backed
@@ -14,8 +15,10 @@ player smoke check passed with an official sample video; two karaoke results
 returned YouTube embed error 150, and physical TVs remain untested.
 Room expiry warnings, terminal states, snapshot reconciliation, safe retries,
 queue-write limits, and a server-only cleanup command are implemented locally.
-Microphones, accounts, and payments are not implemented. See `memory.md` for
-verification and `build-phases.md` for the next gate.
+The host can explicitly enable a local input and use metering, gain, mute,
+monitor volume, compression, and reverb in a browser-only graph that remains
+separate from YouTube. Accounts and payments are not implemented. See
+`memory.md` for verification and `build-phases.md` for the next gate.
 
 ## Product summary
 
@@ -124,8 +127,10 @@ The application will use Next.js App Router, React, TypeScript, Tailwind CSS,
 and shadcn/ui. Client-only session and UI state can use Zustand; server-backed
 data can use TanStack Query where it improves caching and mutation handling.
 
-Supabase provides PostgreSQL, Realtime, optional account authentication, Edge
-Functions or secure server endpoints, and Row Level Security. Persistent room
+The MyKaraoke hosted Supabase project is the MVP source of truth; local
+Supabase is not part of the normal development workflow. Supabase provides
+PostgreSQL, Realtime, optional account authentication, Edge Functions or
+secure server endpoints, and Row Level Security. Persistent room
 facts and queue state belong in PostgreSQL. Presence and transient reactions do
 not automatically belong in durable tables. Queue ordering and protected room
 mutations must use server-authoritative, transactional operations.
@@ -161,6 +166,8 @@ The planned normalized model includes:
 - `room_settings`
 - `microphone_sessions`
 - `room_events`
+- `song_credit_ledger` (future N4)
+- `ad_reward_events` (future N4)
 
 Phase 3 implemented `rooms`, `room_settings`, `room_sessions`, and
 `room_creation_limits`. Phase 4 added `room_members`, short-lived
@@ -216,19 +223,38 @@ command; its hourly hosted schedule remains deployment work.
 
 ## Monetization and paywall direction
 
-The complete web MVP remains usable without payment. Optional subscriptions
-belong to the later native N4 phase, after the app's core party and display
-handoff work. Downloading the app and paying for Pro are separate actions:
-ordinary parties remain free unless the owner explicitly revises the Free/Pro
-matrix after policy review.
+The complete web MVP remains usable without payment. Monetization belongs to
+the later native N4 phase, after the app's core party and display handoff work.
+Downloading the app and paying for Premium are separate actions. The owner set
+the following initial Free/Premium song-credit policy on 2026-10-19; it is a
+documented requirement, not an implemented feature.
 
 - Free access retains room creation, QR joining, YouTube search, shared queue,
   basic host controls, basic local microphone controls, the standard theme, and
   all accessibility and safety controls.
-- Candidate Pro benefits include advanced microphone effects, additional
+- A free allowance starts with 10 qualifying song plays. After that block is
+  used, the user may explicitly opt in to a Google-served rewarded ad that
+  grants 10 additional song credits after verified completion. Each later
+  block requires another separately disclosed, voluntary rewarded-ad grant.
+- A song credit is consumed only when the designated player first reports that
+  an eligible queued video is actually playing. Queueing, retry replay, and a
+  video that fails before playback do not consume a credit.
+- Premium removes MyKaraoke display and rewarded ads and provides unlimited
+  MyKaraoke song credits while the entitlement is active. It does **not**
+  remove, suppress, or promise the absence of advertisements served inside the
+  official YouTube player.
+- Candidate Premium benefits also include advanced microphone effects, additional
   simultaneous microphone streams, custom themes, advanced rotation, saved
   presets, analytics, and optional recordings where legally and technically
   valid.
+- Rewarded ads appear only on a personal controller surface between songs,
+  never over the YouTube player or on the shared TV stage. The prompt must name
+  the exact reward, require affirmative opt-in, permit dismissal, and preserve
+  the room and queue if no ad is available or the user declines.
+- Song credits and rewarded-ad grants must be server-authoritative,
+  idempotent, scoped to the entitled user/account, and verified using the
+  platform's supported reward callback or server-side verification. Client
+  events alone never grant credits.
 - The paywall must explain the exact blocked capability and provide a safe way
   back to the party.
 - UI visibility is not authorization. Server-side entitlements must protect
@@ -239,8 +265,13 @@ matrix after policy review.
 - YouTube-backed capabilities must be reviewed against current YouTube terms
   before they are sold. MyKaraoke must never promise advertisement-free
   YouTube playback or require a subscription merely to view an embedded video.
+- Still open for N4 owner/policy review: the free-allowance reset window and
+  timezone, maximum rewarded blocks or frequency cap, no-fill fallback,
+  account/room ownership rules, Premium price and billing period, and whether
+  the same credit wallet applies across iOS and Android.
 - Recheck [Apple App Review](https://developer.apple.com/app-store/review/guidelines/),
   [Google Play payments](https://support.google.com/googleplay/android-developer/answer/10281818),
+  [Google rewarded-ad policy](https://support.google.com/adsense/answer/9121589),
   and [YouTube developer policies](https://developers.google.com/youtube/terms/developer-policies)
   at implementation time; platform rules and regional exceptions can change.
 

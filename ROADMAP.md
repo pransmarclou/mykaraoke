@@ -8,7 +8,8 @@ Phase 6: designated TV playback and host controls — accepted after owner
 instruction to continue; desktop live-player check passed.
 Web Phase 7: MVP reconnection and lifecycle gate — implemented locally,
 verification pending (full suite, nonproduction deployment, devices).
-Web Phase 8: local Microphone Studio — not started.
+Web Phase 8: local Microphone Studio — implemented; real hardware verification
+pending before acceptance.
 Web Phase 9: singer and party experience — not started.
 Web Phase 10: real phone/laptop/TV-browser compatibility, hardening, and web
 MVP launch — not started. The web remains usable without an app or payment.
@@ -16,7 +17,11 @@ MVP launch — not started. The web remains usable without an app or payment.
 Only after the web MVP is accepted: native N1 builds iOS/Android core party
 actions; N2 adds app-scanned QR pairing to the web big screen; N3 covers
 native microphone and approved feature parity; N4 adds optional native store
-subscriptions; N5 handles app-store release and the app-first transition.
+subscriptions plus the Free rewarded-song-credit model: 10 initial credits and
+10 more after an explicitly accepted, verified Google rewarded ad. Premium
+removes MyKaraoke ads and provides unlimited MyKaraoke credits; it does not
+promise removal of YouTube's in-player ads. N5 handles app-store release and
+the app-first transition.
 The web display remains the big-screen player. Mandatory app installation and
 web host/guest fallback policy need a later owner decision, not an early gate.
 
