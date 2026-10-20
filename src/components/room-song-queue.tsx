@@ -13,11 +13,12 @@ import {
   type FavoriteSong,
 } from "@/lib/songs/favorites";
 import type { QueueSnapshot } from "@/lib/songs/queue";
+import { singerLabel } from "@/lib/songs/singers";
 import type { SongResult } from "@/lib/songs/youtube";
 import { youtubeThumbnailUrl } from "@/lib/songs/thumbnail";
 
 type SearchState = { status: "idle" | "loading" | "results" | "empty" | "error"; songs: SongResult[]; message?: string };
-const emptyQueue: QueueSnapshot = { version: 0, items: [] };
+const emptyQueue: QueueSnapshot = { version: 0, items: [], fairRotation: false };
 const favoritesChangedEvent = "mykaraoke:favorites-changed";
 
 function favoriteStorageSnapshot(): string | null {
@@ -53,11 +54,14 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
   const [queueMessage, setQueueMessage] = useState("");
   const [query, setQuery] = useState("");
   const [singerName, setSingerName] = useState(singer);
+  const [duetEnabled, setDuetEnabled] = useState(false);
+  const [duetSingerName, setDuetSingerName] = useState("");
   const [searchState, setSearchState] = useState<SearchState>({ status: "idle", songs: [] });
   const favoriteStorage = useSyncExternalStore(subscribeToFavoriteStorage, favoriteStorageSnapshot, emptyFavoriteStorageSnapshot);
   const favorites = useMemo(() => parseSongFavorites(favoriteStorage), [favoriteStorage]);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const pendingAdds = useRef(new Map<string, string>());
+  const canAssignSingers = singerName.trim().length >= 2 && (!duetEnabled || duetSingerName.trim().length >= 2);
 
   useEffect(() => {
     let active = true;
@@ -145,7 +149,7 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
     try {
       const response = await fetch(`/api/rooms/${code}/queue`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ searchResultId: song.id, singerName, requestKey }),
+        body: JSON.stringify({ searchResultId: song.id, singerName, duetSingerName: duetEnabled ? duetSingerName : null, requestKey }),
       });
       if (!response.ok) { pendingAdds.current.delete(song.id); setQueueMessage(await responseError(response)); return; }
       const snapshot = await response.json() as QueueSnapshot;
@@ -199,32 +203,67 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
       if (!response.ok) { setQueueMessage(await responseError(response)); if (response.status === 409) void fetch(`/api/rooms/${code}/queue`, { cache: "no-store" }).then(async (latest) => { if (latest.ok) { const snapshot = await latest.json() as QueueSnapshot; setQueue((current) => snapshot.version >= current.version ? snapshot : current); } }).catch(() => {}); return; }
       const snapshot = await response.json() as QueueSnapshot;
       setQueue((current) => snapshot.version >= current.version ? snapshot : current);
-      setQueueMessage(action === "remove" ? "Song removed." : action === "skip" ? "Song skipped." : "Queue order updated.");
+      setQueueMessage(action === "remove" ? "Song removed." : action === "skip" ? "Song skipped." : queue.fairRotation ? "Manual order saved. Fair rotation is now off." : "Queue order updated.");
     } catch { setQueueMessage("Could not update the queue. Check your connection and retry."); }
     finally { setWorkingId(null); }
   }
 
+  async function toggleFairRotation() {
+    if (role !== "host" || queueState !== "connected" || workingId !== null) return;
+    setWorkingId("rotation");
+    setQueueMessage("");
+    try {
+      const response = await fetch(`/api/rooms/${code}/settings/rotation`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !queue.fairRotation, expectedVersion: queue.version }),
+      });
+      if (!response.ok) {
+        setQueueMessage(await responseError(response));
+        if (response.status === 409) {
+          void fetch(`/api/rooms/${code}/queue`, { cache: "no-store" }).then(async (latest) => {
+            if (latest.ok) {
+              const snapshot = await latest.json() as QueueSnapshot;
+              setQueue((current) => snapshot.version >= current.version ? snapshot : current);
+            }
+          }).catch(() => {});
+        }
+        return;
+      }
+      const snapshot = await response.json() as QueueSnapshot;
+      setQueue((current) => snapshot.version >= current.version ? snapshot : current);
+      setQueueMessage(snapshot.fairRotation ? "Fair rotation is on. Waiting songs were arranged by singer." : "Fair rotation is off. Existing queue order was preserved.");
+    } catch {
+      setQueueMessage("Could not update singer rotation. Check your connection and retry.");
+    } finally {
+      setWorkingId(null);
+    }
+  }
+
   return <section className="feature-panel rounded-[1.75rem] p-6 sm:p-8" aria-labelledby="song-queue-title">
     <div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/15 text-[#ffad69]"><ListMusic className="size-5" aria-hidden="true" /></span><div><h2 id="song-queue-title" className="text-xl font-black tracking-tight">Up next</h2><p className="text-sm text-muted-foreground">Shared order for everyone in this room</p></div></div>
+    {queueState === "connected" ? <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div><p className="text-sm font-bold text-white">Fair singer rotation</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Alternates waiting singers while keeping each singer&apos;s songs in request order.</p></div>{role === "host" ? <button type="button" aria-label={queue.fairRotation ? "Turn fair singer rotation off" : "Turn fair singer rotation on"} aria-pressed={queue.fairRotation} disabled={workingId !== null} onClick={() => void toggleFairRotation()} className={`queue-action min-h-11 ${queue.fairRotation ? "border-[#ff6e8f]/60 bg-[#d92362]/25" : ""}`}>{workingId === "rotation" ? "Saving…" : queue.fairRotation ? "On" : "Off"}</button> : <span className={`rounded-full px-3 py-1 text-xs font-bold ${queue.fairRotation ? "bg-[#d92362]/25 text-[#ffb0c3]" : "bg-white/5 text-muted-foreground"}`}>{queue.fairRotation ? "On" : "Off"}</span>}</div> : null}
     {queueState === "loading" ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading queue…</p> : null}
     {queueState === "reconnecting" ? <p role="status" className="mt-5 text-sm text-[#ffc16f]">Queue connection interrupted. Reconnecting…</p> : null}
     {queueState === "ended" ? <p role="alert" className="mt-5 text-sm text-[#ffb0a2]">This room ended or your access expired.</p> : null}
     {queueState === "connected" && queue.items.length === 0 ? <p className="mt-5 text-sm text-muted-foreground">No songs yet. Search for a karaoke video and add the first one.</p> : null}
     <ol className="mt-5 space-y-3" data-testid="queue-list">{queueState !== "ended" ? queue.items.map((item, index) => <li key={item.id} data-testid="queue-item" className="rounded-xl border border-white/10 bg-white/5 p-4">
-      <div className="flex items-center gap-3"><span className="font-mono text-sm font-bold text-[#ffc16f]">{index + 1}.</span><SongThumbnail youtubeId={item.youtubeId} /><div className="min-w-0 flex-1"><p className="font-semibold text-white">{item.title}</p><p className="mt-1 text-sm text-muted-foreground">{item.singerName} · {item.channelTitle} · {duration(item.durationSeconds)}</p></div></div>
+      <div className="flex items-center gap-3"><span className="font-mono text-sm font-bold text-[#ffc16f]">{index + 1}.</span><SongThumbnail youtubeId={item.youtubeId} /><div className="min-w-0 flex-1"><p className="font-semibold text-white">{item.title}</p><p className="mt-1 text-sm text-muted-foreground">{singerLabel(item)} · {item.channelTitle} · {duration(item.durationSeconds)}</p></div></div>
       {role === "host" ? <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3"><button type="button" aria-label={`Move ${item.title} up`} disabled={index === 0 || workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "up")} className="queue-action"><ArrowUp className="size-4" aria-hidden="true" /> Up</button><button type="button" aria-label={`Move ${item.title} down`} disabled={index === queue.items.length - 1 || workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "down")} className="queue-action"><ArrowDown className="size-4" aria-hidden="true" /> Down</button><button type="button" aria-label={`Skip ${item.title}`} disabled={workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "skip")} className="queue-action">Skip</button><button type="button" aria-label={`Remove ${item.title}`} disabled={workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "remove")} className="queue-action"><Trash2 className="size-4" aria-hidden="true" /> Remove</button></div> : null}
     </li>) : null}</ol>
     {queueMessage ? <p role="status" className="mt-4 text-sm text-[#ffc16f]">{queueMessage}</p> : null}
     {queueState !== "ended" ? <div className="mt-8 border-t border-white/10 pt-7"><div className="flex items-center gap-2"><Search className="size-5 text-[#ffc16f]" aria-hidden="true" /><h3 className="text-lg font-bold">Find a karaoke song</h3></div><p className="mt-2 text-sm leading-6 text-muted-foreground">Searches YouTube for videos that report they support embedding. Playback availability is checked again when the host starts a song.</p>
       <label htmlFor={`singer-${role}`} className="mt-5 block text-sm font-semibold">Singer name</label><input id={`singer-${role}`} value={singerName} onChange={(event) => setSingerName(event.target.value)} maxLength={24} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white" />
+      <label htmlFor={`duet-${role}`} className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold"><input id={`duet-${role}`} type="checkbox" checked={duetEnabled} onChange={(event) => { setDuetEnabled(event.target.checked); if (!event.target.checked) setDuetSingerName(""); }} className="size-4 accent-[#d92362]" />Add a duet partner</label>
+      {duetEnabled ? <div><label htmlFor={`duet-singer-${role}`} className="mt-4 block text-sm font-semibold">Duet partner name</label><input id={`duet-singer-${role}`} value={duetSingerName} onChange={(event) => setDuetSingerName(event.target.value)} maxLength={24} aria-describedby={`duet-help-${role}`} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white" /><p id={`duet-help-${role}`} className="mt-2 text-xs text-muted-foreground">Choose a different person. Both singers share one turn in fair rotation.</p></div> : null}
       <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4" data-testid="song-favorites"><div className="flex items-center gap-2"><Heart className="size-4 text-[#ff6e8f]" aria-hidden="true" /><h4 className="font-bold">Favorites on this browser</h4></div><p className="mt-1 text-xs text-muted-foreground">Saved only on this device. MyKaraoke refreshes YouTube availability before adding one.</p>
-        {favorites.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Use Save on a search result to keep it here.</p> : <ul className="mt-3 space-y-2">{favorites.map((favorite) => <li key={favorite.youtubeId} className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/5 p-3 sm:flex-row sm:items-center"><SongThumbnail youtubeId={favorite.youtubeId} /><div className="min-w-0 flex-1"><p className="font-semibold">{favorite.title}</p><p className="text-xs text-muted-foreground">{favorite.channelTitle} · {duration(favorite.durationSeconds)}</p></div><div className="flex gap-2 self-end sm:self-auto"><button type="button" disabled={workingId !== null || singerName.trim().length < 2 || queueState !== "connected"} onClick={() => void addFavorite(favorite)} className="rounded-lg bg-[#d92362] px-3 py-2 text-sm font-bold text-white disabled:opacity-50">{workingId === `favorite:${favorite.youtubeId}` ? "Checking…" : "Add"}</button><button type="button" aria-label={`Remove ${favorite.title} from favorites`} onClick={() => toggleFavorite(favorite)} className="queue-action"><Trash2 className="size-4" aria-hidden="true" /> Remove</button></div></li>)}</ul>}
+        {favorites.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Use Save on a search result to keep it here.</p> : <ul className="mt-3 space-y-2">{favorites.map((favorite) => <li key={favorite.youtubeId} className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/5 p-3 sm:flex-row sm:items-center"><SongThumbnail youtubeId={favorite.youtubeId} /><div className="min-w-0 flex-1"><p className="font-semibold">{favorite.title}</p><p className="text-xs text-muted-foreground">{favorite.channelTitle} · {duration(favorite.durationSeconds)}</p></div><div className="flex gap-2 self-end sm:self-auto"><button type="button" disabled={workingId !== null || !canAssignSingers || queueState !== "connected"} onClick={() => void addFavorite(favorite)} className="rounded-lg bg-[#d92362] px-3 py-2 text-sm font-bold text-white disabled:opacity-50">{workingId === `favorite:${favorite.youtubeId}` ? "Checking…" : "Add"}</button><button type="button" aria-label={`Remove ${favorite.title} from favorites`} onClick={() => toggleFavorite(favorite)} className="queue-action"><Trash2 className="size-4" aria-hidden="true" /> Remove</button></div></li>)}</ul>}
       </div>
       <label htmlFor={`song-search-${role}`} className="mt-5 block text-sm font-semibold">Search YouTube karaoke</label><input id={`song-search-${role}`} type="search" value={query} onChange={(event) => { setQuery(event.target.value); setSearchState({ status: "idle", songs: [] }); }} placeholder="Song or artist" maxLength={80} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white" />
       {searchState.status === "loading" ? <p role="status" className="mt-4 text-sm text-muted-foreground">Searching YouTube…</p> : null}
       {searchState.status === "empty" ? <p role="status" className="mt-4 text-sm text-muted-foreground">No supported results found. Try another song or artist.</p> : null}
       {searchState.status === "error" ? <p role="alert" className="mt-4 text-sm text-[#ffb0a2]">{searchState.message}</p> : null}
-      {searchState.status === "results" ? <ul className="mt-4 space-y-2" data-testid="search-results">{searchState.songs.map((song) => { const saved = favorites.some((favorite) => favorite.youtubeId === song.youtubeId); return <li key={song.id} className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto]"><SongThumbnail youtubeId={song.youtubeId} /><div className="min-w-0"><p className="font-semibold">{song.title}</p><p className="text-xs text-muted-foreground">{song.channelTitle} · {duration(song.durationSeconds)} · YouTube</p></div><div className="col-span-2 flex justify-self-end gap-2 sm:col-span-1"><button type="button" aria-pressed={saved} onClick={() => toggleFavorite(song)} className="queue-action"><Heart className={`size-4 ${saved ? "fill-current text-[#ff6e8f]" : ""}`} aria-hidden="true" /> {saved ? "Saved" : "Save"}</button><button type="button" disabled={workingId !== null || singerName.trim().length < 2 || queueState !== "connected"} onClick={() => void add(song)} className="rounded-lg bg-[#d92362] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Add</button></div></li>; })}</ul> : null}
+      {searchState.status === "results" ? <ul className="mt-4 space-y-2" data-testid="search-results">{searchState.songs.map((song) => { const saved = favorites.some((favorite) => favorite.youtubeId === song.youtubeId); return <li key={song.id} className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto]"><SongThumbnail youtubeId={song.youtubeId} /><div className="min-w-0"><p className="font-semibold">{song.title}</p><p className="text-xs text-muted-foreground">{song.channelTitle} · {duration(song.durationSeconds)} · YouTube</p></div><div className="col-span-2 flex justify-self-end gap-2 sm:col-span-1"><button type="button" aria-pressed={saved} onClick={() => toggleFavorite(song)} className="queue-action"><Heart className={`size-4 ${saved ? "fill-current text-[#ff6e8f]" : ""}`} aria-hidden="true" /> {saved ? "Saved" : "Save"}</button><button type="button" disabled={workingId !== null || !canAssignSingers || queueState !== "connected"} onClick={() => void add(song)} className="rounded-lg bg-[#d92362] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Add</button></div></li>; })}</ul> : null}
       <p className="mt-4 text-xs text-muted-foreground">Results and metadata provided by YouTube. Videos stay on YouTube; MyKaraoke does not download them.</p>
     </div> : null}
   </section>;

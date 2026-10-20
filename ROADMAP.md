@@ -10,7 +10,10 @@ Web Phase 7: MVP reconnection and lifecycle gate — implemented locally,
 verification pending (full suite, nonproduction deployment, devices).
 Web Phase 8: local Microphone Studio — implemented; real hardware verification
 pending before acceptance.
-Web Phase 9: singer and party experience — not started.
+Web Phase 9: singer and party experience — in build. Browser-local favorites,
+ephemeral rate-limited TV reactions, fair singer rotation, and duet assignment
+are implemented; dedicated hosted-test verification plus themes and permissions
+remain open.
 Web Phase 10: real phone/laptop/TV-browser compatibility, hardening, and web
 MVP launch — not started. The web remains usable without an app or payment.
 

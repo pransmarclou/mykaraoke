@@ -16,6 +16,10 @@ Realtime reconnection, queue-write limits, and a server-side cleanup command;
 local Microphone Studio with permission onboarding, browser-visible input
 selection, level meter, gain, monitor volume, mute, compression, reverb,
 explicit monitoring, and permission/device/audio-suspension recovery; local
+browser favorites; fixed, server-rate-limited host/guest reactions delivered
+ephemerally to the paired TV with reduced-motion support; optional fair singer
+rotation with stable per-performer ordering and manual host override; optional
+two-singer duet assignment visible in the queue and playback surfaces; local
 database and browser tests.
 
 Verified locally: one live YouTube karaoke search returned results and the

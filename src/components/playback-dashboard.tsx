@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MonitorPlay, Pause, Play, SkipForward } from "lucide-react";
+import { RoomReactions } from "@/components/room-reactions";
 import type { PlaybackSnapshot, HostPlaybackAction } from "@/lib/playback/state";
+import { singerLabel } from "@/lib/songs/singers";
 
 async function readError(response: Response): Promise<string> {
   try { return ((await response.json()) as { error?: string }).error ?? "Please try again."; }
@@ -72,8 +74,9 @@ export function PlaybackDashboard({ code, role, tvUrl }: { code: string; role: "
     {connection === "reconnecting" ? <p role="status" className="mt-5 text-sm text-[#ffc16f]">Playback connection interrupted. Reconnecting…</p> : null}
     {!state && connection === "loading" ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading playback state…</p> : null}
     {state && connection !== "ended" ? <>
-      {state.current ? <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4"><p className="text-xs font-bold uppercase tracking-wider text-[#ffc16f]">{state.observed === "playing" ? "Now playing" : "Current song"}</p><p className="mt-2 font-bold text-white">{state.current.title}</p><p className="mt-1 text-sm text-muted-foreground">Singer: {state.current.singerName}</p><p className="mt-2 text-sm text-[#ffc16f]">Player: {state.observed}{state.observed === "error" ? ` (YouTube error ${state.errorCode ?? "unknown"})` : ""}</p></div> : <p className="mt-5 text-sm text-muted-foreground">No song is on stage yet.</p>}
-      {state.next ? <p className="mt-4 text-sm text-muted-foreground">Up next: <span className="text-white">{state.next.title}</span> · {state.next.singerName}</p> : null}
+      {state.current ? <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4"><p className="text-xs font-bold uppercase tracking-wider text-[#ffc16f]">{state.observed === "playing" ? "Now playing" : "Current song"}</p><p className="mt-2 font-bold text-white">{state.current.title}</p><p className="mt-1 text-sm text-muted-foreground">Singer: {singerLabel(state.current)}</p><p className="mt-2 text-sm text-[#ffc16f]">Player: {state.observed}{state.observed === "error" ? ` (YouTube error ${state.errorCode ?? "unknown"})` : ""}</p></div> : <p className="mt-5 text-sm text-muted-foreground">No song is on stage yet.</p>}
+      {state.next ? <p className="mt-4 text-sm text-muted-foreground">Up next: <span className="text-white">{state.next.title}</span> · {singerLabel(state.next)}</p> : null}
+      <RoomReactions code={code} enabled={Boolean(state.current) && connection === "connected"} />
       {role === "host" ? <>
         <p className="mt-4 text-sm text-muted-foreground">TV: {state.tvConnected ? "connected" : state.devicePaired ? "paired, waiting for connection" : "not paired"}</p>
         <div className="mt-4 flex flex-wrap gap-2">

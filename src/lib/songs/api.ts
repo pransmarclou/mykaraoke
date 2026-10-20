@@ -1,9 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { InvalidDisplayNameError } from "@/lib/rooms/display-name";
 import { roomAccess } from "@/lib/rooms/guests";
 import { GUEST_COOKIE_NAME, HOST_COOKIE_NAME } from "@/lib/rooms/http";
 import { isValidRoomCode } from "@/lib/rooms/room-code";
 import { QueueError } from "@/lib/songs/queue";
+import { SingerAssignmentError } from "@/lib/songs/singers";
 import { SongSearchError } from "@/lib/songs/youtube";
 import { roomApiError } from "@/lib/rooms/api-errors";
 
@@ -14,6 +16,18 @@ export async function songRoomAccess(code: string) {
 }
 
 export function songApiError(error: unknown, context: string) {
+  if (error instanceof InvalidDisplayNameError) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+  if (error instanceof SingerAssignmentError) {
+    return NextResponse.json(
+      { error: "Choose two different people for a duet." },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   if (error instanceof SongSearchError) {
     const responses = {
       invalid: [400, "Search for 2–80 characters."],

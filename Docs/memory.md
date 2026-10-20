@@ -8,10 +8,11 @@ to evidence or code rather than restating large documents.
 
 - Last updated: 2026-10-20
 - Current stage: Phase 9 — Singer and party experience
-- Current status: In build; browser-local favorites are the first implemented
-  slice. Phases 7–8 remain implemented with verification pending
-- Repository state: Phase 9 local-favorites code, tests, and documentation are
-  in the current `main` change set; the prior cleanup deployment remains live
+- Current status: In build; browser-local favorites, ephemeral TV reactions,
+  fair singer rotation, and duet assignment are implemented slices. Phases 7–8
+  remain implemented with verification pending
+- Repository state: Phase 9 reaction/rotation/duet code, additive migrations,
+  tests, and documentation are uncommitted on `main`; the prior cleanup deployment remains live
 - Current phase gate: Complete and jointly verify all Phase 9 party features.
   The deferred Phase 7 multi-device and Phase 8 hardware/audio checks remain
   open and are not acceptance evidence
@@ -792,6 +793,106 @@ test-project, browser/device, and audio-hardware matrices are completed.
 - Next exact action: Run a favorites browser journey against an exactly
   allowlisted hosted test project, then continue with the next independent
   Phase 9 slice. Keep the deferred Phase 7–8 evidence visible.
+
+## Phase 9 ephemeral TV reactions slice — 2026-10-20
+
+- REA evidence: A user-supplied reference test account was used only in a
+  temporary REA browser. `ev_5a9ff9d3688b48ce4754df220b36ef6c6b682178c3e0214bc9ce93ee643b55fa`
+  showed an authenticated current
+  singer and visible guidance inviting phone users to cheer. It did not expose
+  the guest control or verify reaction delivery or scoring.
+- Completed: Hosts and guests can send Applause, Fire, Love, or Celebrate only
+  while a singer is current. The POST boundary checks the private room session,
+  same origin, a 512-byte body cap, and the fixed reaction set. PostgreSQL
+  enforces six reactions per actor per ten seconds.
+- Delivery/privacy: The server publishes the typed event on the room's existing
+  random private Realtime topic. The paired TV now receives that topic, validates
+  every payload, caps visible reactions, removes each after 3.5 seconds, and
+  disables motion when the browser requests reduced motion. Events are not
+  stored; only the short-window abuse budget is durable. Reactions do not alter
+  playback or scoring.
+- Files/migration: Added the reaction rules, server state/API, controller UI,
+  TV subscriber/animation, and additive
+  `20261020020000_reaction_limits.sql` migration.
+- Tests run: Unit 34/34, lint, TypeScript, optimized Next.js production build,
+  and diff checks passed. Dedicated integration
+  coverage for actor isolation/window reset/RLS and a multi-context guest-to-TV
+  browser assertion are authored but were not run because this checkout points
+  to live MVP data and no exact `MYKARAOKE_TEST_DB_HOST` is configured.
+- Deployment boundary: The new migration has not been applied to production and
+  this slice has not been deployed. Apply it before deploying code, using the
+  normal reviewed migration path; do not run the test suite on live MVP data.
+- Known limitations: Realtime delivery is transient and intentionally has no
+  replay after TV reconnect. Physical TV/browser verification remains open.
+  Reference score boosting is not implemented because its calculation was not
+  observed and MyKaraoke scoring remains research-only.
+- Next exact action: Run the reaction and rotation integration/multi-context
+  journeys together on the dedicated hosted test project before the duet,
+  theme, or guest-permission slices.
+
+## Phase 9 fair singer rotation slice — 2026-10-20
+
+- Completed: The host can toggle Fair singer rotation from the shared queue.
+  Enabling it transactionally arranges waiting songs into stable singer rounds,
+  preserves each singer's request order, and starts after the current singer
+  where applicable. Hosts and guests receive the setting and order in the same
+  versioned queue snapshot.
+- Host override: Up/Down remains available. A successful manual move disables
+  fair rotation in the same transaction and preserves the selected manual
+  order. Remove and skip do not silently change the setting.
+- Security/concurrency: Only a checked host session can mutate the setting.
+  The endpoint uses same-origin and body-size checks; the repository locks the
+  room, rejects stale queue versions, consumes the existing host queue-write
+  budget, and publishes the normal private Realtime invalidation.
+- Data model: Added additive migration
+  `20261020030000_fair_rotation.sql`, extending the existing server-only and
+  RLS-protected `room_settings` row. No new client database grant was added.
+- Tests run: Unit 36/36, lint, TypeScript, optimized Next.js production build,
+  and diff checks passed. Unit coverage includes stable per-singer order and
+  current-singer rotation. Dedicated integration coverage and a host/guest
+  browser journey are authored but were not run because no separately
+  allowlisted hosted test project is configured.
+- Reference boundary: No observed reference evidence established rotation
+  behavior. This explicit algorithm and override are MyKaraoke product choices,
+  not reconstructed hidden behavior.
+- Deployment boundary: Neither Phase 9 migration has been applied to production
+  and these uncommitted slices are not deployed. Apply both migrations in order
+  before deploying code.
+- Next exact action: Verify reactions and rotation together on the dedicated
+  hosted test project, then review before starting the duet slice.
+
+## Phase 9 duet singer assignment slice — 2026-10-20
+
+- Reference boundary: Retained REA evidence from the authenticated host/search
+  and current-singer states showed a single visible singer and no duet control.
+  This does not prove the reference lacks duets elsewhere. MyKaraoke's behavior
+  is an independent product decision, not a reconstructed hidden interaction.
+- Completed: A host or guest can opt into a duet while choosing a song, enter a
+  second distinct validated name, and add one queue record carrying both
+  singers. Queue snapshots, host/guest playback status, and the paired TV use
+  the same formatted pair.
+- Rotation rule: The normalized unordered pair is one performer unit. `Alex &
+  Sam` and `Sam & Alex` share a fair-rotation group while preserving the display
+  order submitted for each song. Solo behavior is unchanged.
+- Security/data: The existing authenticated same-origin queue POST remains the
+  only mutation boundary. Additive migration `20261020040000_duet_singers.sql`
+  adds a nullable checked column to the existing RLS-protected queue table; no
+  browser database grant was added.
+- Tests run: Unit 38/38, lint, TypeScript, optimized Next.js production build,
+  and diff checks passed. Unit coverage
+  includes normalization, distinct-singer rejection, pair identity, labeling,
+  and fair rotation. Dedicated integration and guest/host/TV Playwright coverage
+  are authored but not run because no separately allowlisted hosted test project
+  is configured.
+- Deployment boundary: The duet migration and the earlier two Phase 9
+  migrations have not been applied to production. The uncommitted slice has not
+  been deployed.
+- Known limitations: Manual browser and physical TV checks remain open. Duets
+  share one rotation turn; there is no per-person participation history or
+  scoring. Existing queued rows remain solos after migration.
+- Next exact action: Apply all three Phase 9 migrations to a separately
+  allowlisted hosted test project and run the combined reaction, rotation,
+  duet, playback, and reconnection journeys before the theme or permission slice.
 
 ## Session handoff template
 

@@ -13,6 +13,12 @@
   feedback safety, disconnect recovery, and measured latency on actual Mac and
   Windows hardware with built-in, USB/audio-interface, and available Bluetooth
   devices. Record exactly which combinations were tested.
+- Phase 9 reaction/rotation/duet gate: apply all three additive Phase 9 migrations to the
+  dedicated hosted test project, then run the authored integration and
+  host/guest/TV Playwright journeys. Apply all three migrations in order before any
+  production code deployment; do not run those suites against live MVP data.
+- Continue Phase 9 after reaction/rotation/duet review with independently
+  testable standard-theme and server-enforced guest-permission slices.
 - Finish the cross-browser web MVP through Phase 10 before building the native
   app. Do not add a web paywall or mandatory app-install gate in that stage.
 - After the web gate, decide the native stack and account migration, then build

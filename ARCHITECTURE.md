@@ -45,6 +45,28 @@ permission, missing-device, unsupported/insecure-context, and suspended-context
 states are recoverable in the UI. No microphone samples cross an API boundary,
 enter Supabase, mix into the YouTube player, or persist to storage.
 
+Phase 9 currently adds browser-local favorites plus `src/lib/reactions/`.
+Reaction POSTs accept only a fixed identifier after same-origin and host/guest
+session checks. A server-only PostgreSQL table keeps the per-room actor budget;
+the event itself is broadcast ephemerally on the existing random private room
+topic. The paired TV is allowed to request that topic through its separate
+device credential, validates every payload, bounds its transient render queue,
+and removes each reaction after 3.5 seconds. Reactions are not persisted and do
+not affect scoring or playback.
+
+Fair rotation extends the existing `room_settings` row. Queue snapshots include
+the flag, and enabling it runs a pure stable-round ordering rule inside the
+same room-lock transaction used for queue mutations. The current singer is
+placed after other waiting singers when possible. Manual host Up/Down disables
+the flag in the same transaction, providing an explicit override without a
+second source of queue truth.
+
+Duets extend the protected queue record with one nullable second singer. The
+same queue POST validates both names and rejects a repeated person before the
+transaction writes. Queue and playback snapshots carry the pair to host, guest,
+and TV surfaces. Fair rotation derives one normalized unordered performer key
+for the pair, while the submitted name order remains intact for display.
+
 The future native track will reuse server-authoritative domain rules through
 authenticated APIs. Its big-screen handoff differs from today's pairing:
 the web display creates a single-use expiring QR claim, an authenticated host
@@ -58,8 +80,8 @@ Migrations live in `supabase/migrations/`. The `rooms`, `room_settings`,
 `room_join_limits` tables have RLS enabled and no client-facing grants. Guest
 membership is durable for the room lifetime; presence is a separate short-lived
 heartbeat lease, rendered by server polling. Search cache/usage and queue tables
-also deny direct browser DB roles. Playback state, pairing limits, and command
-records also deny direct browser DB roles. The hosted Supabase project is the
+also deny direct browser DB roles. Playback state, pairing limits, command
+records, and reaction budgets also deny direct browser DB roles. The hosted Supabase project is the
 MVP source of truth for PostgreSQL and Realtime; account Auth remains deferred.
 Local Supabase is no longer part of the normal development or MVP workflow.
 

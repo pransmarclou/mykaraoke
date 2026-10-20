@@ -2,8 +2,10 @@
 
 ## Implementation status
 
-As of 2026-10-20, Phase 9 is in build with browser-local song favorites as its
-first functional slice. The owner explicitly deferred, but did not accept, the
+As of 2026-10-20, Phase 9 is in build with browser-local song favorites,
+ephemeral TV reactions, fair singer rotation, and duet singer assignment as
+implemented slices. The
+owner explicitly deferred, but did not accept, the
 remaining Phase 7 and Phase 8 verification. The production HTTPS deployment is
 live; Phase 7's broad browser and real-device gate remains open. A
 host can create a 24-hour room and invite guests. Guests can join, search
@@ -21,9 +23,24 @@ The host can explicitly enable a local input and use metering, gain, mute,
 monitor volume, compression, and reverb in a browser-only graph that remains
 separate from YouTube. Hosts and guests can save validated song metadata to
 the current browser and refresh YouTube availability before adding a favorite
-later. Favorites do not sync to an account. Accounts and payments are not
-implemented. See `memory.md` for verification and `build-phases.md` for the
-next gate.
+later. While a singer is on stage, hosts and guests can send one of four fixed,
+server-rate-limited reactions that is broadcast ephemerally to the paired TV
+and removed after a brief accessible animation. Reactions are not stored and
+do not affect a score. Favorites do not sync to an account. Accounts and
+payments are not implemented. See `memory.md` for verification and
+`build-phases.md` for the next gate.
+
+The host can enable fair rotation for waiting songs. It alternates normalized
+singer names in stable rounds, preserves each singer's request order, and starts
+after the current singer when that singer also has a waiting song. A manual host
+Up/Down action is the explicit override and turns rotation off without changing
+the chosen manual order.
+
+A queue request can optionally name a second, distinct singer. Both names are
+validated at the server boundary and remain visible in the queue, host/guest
+playback status, and paired TV view. Fair rotation treats an unordered duet
+pair as one performer unit, so reversing the two names does not create another
+turn identity.
 
 ## Product summary
 
@@ -187,6 +204,12 @@ records. The remaining tables belong to the phases that first use them.
 Phase 7 added a private queue-mutation budget table and an idempotent cleanup
 command. Vercel invokes the guarded cleanup route daily at 07:00 UTC; room
 expiry itself remains immediate because every access path checks `expires_at`.
+Phase 9 adds a server-only short-window reaction budget. Reaction payloads use
+the room's existing private Realtime capability and are not persisted.
+Its fair-rotation flag lives in the existing server-only `room_settings` row;
+queue versions and private Realtime invalidations distribute every change.
+The optional `queue_items.duet_singer_name` column keeps duet assignment in the
+same protected, transactional queue record as the primary singer.
 
 ## UI and brand direction
 

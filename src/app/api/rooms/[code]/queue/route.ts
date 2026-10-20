@@ -17,9 +17,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     const { code } = await params;
     const room = await songRoomAccess(code);
     if (Number(request.headers.get("content-length") ?? 0) > 4_096) return NextResponse.json({ error: "Queue request is too large." }, { status: 413 });
-    const body = await request.json().catch(() => null) as { searchResultId?: string; singerName?: unknown; requestKey?: string } | null;
+    const body = await request.json().catch(() => null) as { searchResultId?: string; singerName?: unknown; duetSingerName?: unknown; requestKey?: string } | null;
     if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Invalid queue request." }, { status: 400 });
-    const snapshot = await addQueueItem({ roomId: room.roomId, role: room.role, guestId: room.guestId, searchResultId: body.searchResultId ?? "", singerName: body.singerName, requestKey: body.requestKey ?? "" });
+    const snapshot = await addQueueItem({ roomId: room.roomId, role: room.role, guestId: room.guestId, searchResultId: body.searchResultId ?? "", singerName: body.singerName, duetSingerName: body.duetSingerName, requestKey: body.requestKey ?? "" });
     return NextResponse.json(snapshot, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) { return songApiError(error, "Queue add failed"); }
 }

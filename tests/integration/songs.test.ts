@@ -5,7 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 import { getDb } from "../../src/lib/db";
 import { createHostRoom } from "../../src/lib/rooms/repository";
 import { joinRoom, roomAccess } from "../../src/lib/rooms/guests";
-import { addQueueItem, mutateQueue, queueSnapshot, QueueError, reserveQueueMutation } from "../../src/lib/songs/queue";
+import { addQueueItem, mutateQueue, queueSnapshot, QueueError, reserveQueueMutation, setFairRotation } from "../../src/lib/songs/queue";
+import { SingerAssignmentError } from "../../src/lib/songs/singers";
 import { searchYouTube } from "../../src/lib/songs/youtube";
 
 const rooms: string[] = [];
@@ -75,6 +76,41 @@ test("host mutations require current version and stay isolated to a room", async
   assert.equal((await queueSnapshot(other.room.id)).items.length, 0);
   assert.deepEqual(await roomAccess(host.room.code, undefined, guest.credential), { roomId: host.room.id, role: "guest", guestId: guest.guest.id, expiresAt: host.room.expiresAt });
   await assert.rejects(roomAccess(other.room.code, undefined, guest.credential), /access denied/);
+});
+
+test("host can enable fair singer rotation and a manual move disables it", async () => {
+  const host = await createHostRoom(); rooms.push(host.room.id);
+  const ids = await Promise.all(["rBcDeFgHi01", "rBcDeFgHi02", "rBcDeFgHi03"].map(seedSong));
+  const singers = ["Alex", "Alex", "Sam"];
+  for (let index = 0; index < ids.length; index += 1) {
+    await addQueueItem({ roomId: host.room.id, role: "host", searchResultId: ids[index], singerName: singers[index], requestKey: randomUUID() });
+  }
+  const before = await queueSnapshot(host.room.id);
+  assert.equal(before.fairRotation, false);
+  const rotated = await setFairRotation(host.room.id, true, before.version);
+  assert.equal(rotated.fairRotation, true);
+  assert.deepEqual(rotated.items.map((item) => item.singerName), ["Alex", "Sam", "Alex"]);
+  const manual = await mutateQueue({ roomId: host.room.id, id: rotated.items[2].id, action: "up", expectedVersion: rotated.version });
+  assert.equal(manual.fairRotation, false);
+  assert.deepEqual(manual.items.map((item) => item.singerName), ["Alex", "Alex", "Sam"]);
+});
+
+test("a duet is stored, returned in queue snapshots, and remains one fair-rotation performer", async () => {
+  const host = await createHostRoom(); rooms.push(host.room.id);
+  const ids = await Promise.all(["uBcDeFgHi01", "uBcDeFgHi02", "uBcDeFgHi03"].map(seedSong));
+  await addQueueItem({ roomId: host.room.id, role: "host", searchResultId: ids[0], singerName: "Alex", duetSingerName: "Sam", requestKey: randomUUID() });
+  await addQueueItem({ roomId: host.room.id, role: "host", searchResultId: ids[1], singerName: "sam", duetSingerName: "alex", requestKey: randomUUID() });
+  await addQueueItem({ roomId: host.room.id, role: "host", searchResultId: ids[2], singerName: "Lee", requestKey: randomUUID() });
+  const before = await queueSnapshot(host.room.id);
+  assert.deepEqual(before.items.map((item) => [item.singerName, item.duetSingerName]), [["Alex", "Sam"], ["sam", "alex"], ["Lee", null]]);
+  const rotated = await setFairRotation(host.room.id, true, before.version);
+  assert.deepEqual(rotated.items.map((item) => item.youtubeId), ["uBcDeFgHi01", "uBcDeFgHi03", "uBcDeFgHi02"]);
+
+  const invalidSong = await seedSong("uBcDeFgHi04");
+  await assert.rejects(
+    addQueueItem({ roomId: host.room.id, role: "host", searchResultId: invalidSong, singerName: "Alex", duetSingerName: " alex ", requestKey: randomUUID() }),
+    (error: unknown) => error instanceof SingerAssignmentError && error.reason === "same_singer",
+  );
 });
 
 test("queue write budget is scoped to an actor and resets after its window", async () => {

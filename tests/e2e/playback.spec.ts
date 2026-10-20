@@ -79,6 +79,9 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(page.getByText("Player: playing")).toBeVisible({ timeout: 10_000 });
     await expect(guest.getByText("Player: playing")).toBeVisible({ timeout: 10_000 });
     await expect(guest.getByText(`Singer: Alex`)).toBeVisible();
+    await guest.getByRole("button", { name: "Send Applause" }).click();
+    await expect(guest.getByRole("status").filter({ hasText: "Applause sent to the TV" })).toBeVisible();
+    await expect(tv.getByLabel("Party reactions")).toContainText("Alex", { timeout: 10_000 });
 
     await page.getByRole("button", { name: "Pause", exact: true }).click();
     await expect(tv.getByText("Player state: paused")).toBeVisible({ timeout: 10_000 });

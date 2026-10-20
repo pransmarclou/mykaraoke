@@ -13,6 +13,15 @@
 }
 .queue-action:hover:not(:disabled) { background: rgb(255 255 255 / 0.1); }
 .queue-action:disabled { opacity: 0.45; }
+
+@keyframes tv-reaction-rise {
+  0% { opacity: 0; transform: translate(-50%, 1rem) scale(0.85); }
+  15% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  82% { opacity: 1; transform: translate(-50%, -4.5rem) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -6rem) scale(0.96); }
+}
+
+.tv-reaction { animation: tv-reaction-rise 3.5s ease-out both; }
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));

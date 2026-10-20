@@ -32,11 +32,13 @@ This ledger deliberately separates:
   guest, queue synchronization, and playback research remains open for the
   functional phases that need it
 - REA Evidence IDs: Recorded below
-- Runtime scenarios captured: Main entry, host initial state, host search and
-  add, premium page, invalid join attempt, and a fresh Phase 9 host-control
-  inventory
+- Runtime scenarios captured: Main entry, authenticated sign-in, host initial
+  state, host search and add, Scores/Search tabs, premium page, invalid join
+  attempt, and the active-singer cheer prompt
 - Static assets or application bundles inspected: None
-- Credentials used: None
+- Credentials used: A user-supplied reference-site test account was used only
+  in a temporary REA browser session; no credential value was written to this
+  repository or documentation
 - Findings approved for implementation: Independent host and join entry
   surfaces, a separate upgrade destination later, and an explicit empty state
 
@@ -149,6 +151,9 @@ large capture.
 | REF-PAY-02 | Compare visible plan states | Open paywall without checkout | Inspect plans and capability labels; do not enter payment data | Free/paid boundaries, account requirement, disclosures, unresolved checkout facts | Observed visible offer and payment instructions; no purchase |
 | REF-PAY-03 | Return to the party | Open paywall | Use the ordinary close/back action once | Return destination and preservation of prior state | Browser back returned to root; in-party return unresolved |
 | REF-PARTY-01 | Inventory visible party controls | Fresh host surface | Navigate to `/host`; wait for the initial surface; do not click, search, or join | Visible party controls and tabs relevant to Phase 9 | Observed with REA; one initial host state only |
+| REF-AUTH-01 | Establish authenticated reference state | Signed-out root | Open the ordinary sign-in modal and submit the user-supplied test account once | Authenticated account indicator and ordinary signed-in navigation | Observed with REA; no account settings, purchase, or recovery action attempted |
+| REF-PARTY-02 | Inspect authenticated host tabs | Authenticated host room | Open Scores, then Search; observe each state without modifying account data | Empty-score state and visible discovery controls | Observed with REA; one host state and one viewport only |
+| REF-PARTY-03 | Observe the active-singer party prompt | Authenticated host Search tab | Add one visible result and inspect the current-performance surface | Queue confirmation, current singer/player controls, and any reaction guidance | Observed with REA; guest reaction controls, reaction delivery, and scoring effect were not exercised |
 
 ## Evidence ledger
 
@@ -166,6 +171,11 @@ Add a row for every retained REA result or manual verification source.
 | 2026-10-18 | `ev_0b6bf2a9bede95d91ecdd7be4af6a5be5564beaf38b1bcd0ad1d51db458c96b5` | REF-JOIN-01 attempted | `/` | REA declared fill/click scenario in a separate fresh browser | Submitting the previously displayed synthetic host code opened a “Sign In to Premium” modal; no guest room appeared | Code validity across temporary browser profiles was not established; no credentials entered; anonymous join and identity recovery remain unknown |
 | 2026-10-18 | `ev_22a5b34124c0482c7a28ea2bdc1d5bf402311fbb568aeb4efb4ed3b3fc89c3b4` | REF-PLAY-01 partial | `/host` | REA bounded search/add scenario | Adding a visible result moved it to a current singer surface with a YouTube iframe and host skip control | The capture does not prove video actually played, ended, or advanced; no TV authority or player-error state established |
 | 2026-10-20 | `ev_703e372df7ab63718e48be292ad8a2ec62a40361384d17b61c5c4d86555a72f6` | REF-PARTY-01 | `/host` | REA passive controlled browser capture | Fresh host surface exposed Sing/mic, fullscreen, Up Next, Scores, Search, an empty queue, room code, and QR | One fresh state only; rotation, duets, reactions, favorites, permissions, and themes were not visible, which does not prove they are absent elsewhere |
+| 2026-10-20 | `ev_1292c50f51cf37a99325de94f41563a1bb556748bdea637fa94890f87dbf7b1b` | REF-AUTH-01 preparation | `/` | REA controlled browser capture | The ordinary Sign In action opened a “Sign In to Premium” modal with email/password, Google, sign-up, and recovery choices | Modal inventory only; no authentication result in this evidence item |
+| 2026-10-20 | `ev_7f78df765996a30b503b2532effb8c4892af06f448edba08299427dab0380745` | REF-AUTH-01 | `/` | REA declared credential submission in a temporary browser | The user-supplied test account authenticated and the root displayed its account label plus Sign Out | No account settings, entitlement, payment, or recovery behavior inspected; credential values were not retained in project files |
+| 2026-10-20 | `ev_ae6003a9a29fc61a535d45215f6709f73a88ed271a2322f75f8459e8ede2d82d` | REF-PARTY-02 preparation | `/host` | REA authenticated navigation | Start Session opened an authenticated host room with code/QR, Sing, fullscreen, Up Next, Scores, and Search | Initial authenticated host state only |
+| 2026-10-20 | `ev_27e9451264bf8b7c1fab7fa8f75563cff0c73e8e929dd8f057cc26dea3bbc149` | REF-PARTY-02 | `/host` | REA authenticated tab inspection | Scores displayed an empty-state message; Search displayed a query control and a “Hot Right Now” result list | Final thumbnail wait matched multiple elements and ended the bounded run; tab observations before that point completed |
+| 2026-10-20 | `ev_5a9ff9d3688b48ce4754df220b36ef6c6b682178c3e0214bc9ce93ee643b55fa` | REF-PARTY-03 | `/host` | REA authenticated search/add scenario | Adding a visible result produced a queue-update confirmation, embedded player/current singer, skip control, and guidance that phone users can cheer the singer to boost score | No guest reaction UI or delivered reaction was observed; the score effect is a reference claim, not verified behavior |
 
 ## Finding ledger
 
@@ -183,6 +193,10 @@ not the completeness of the application analysis.
 | F-07 | MyKaraoke decision | A host room is persisted for 24 hours and controlled by a private browser credential, never by its public code | F-02 and the bounded host-refresh UI observation establish only visible code/QR/recovery, not backend security | Product decision | Phase 3 implements independently tested persistence, invite destination, and host authorization |
 | F-08 | Observation | Host add can show a current singer, embedded YouTube frame, and skip control | Phase 6 REA search/add capture | High for visible controls; low for actual playback | MyKaraoke implements and tests designated-device playback independently |
 | F-09 | MyKaraoke decision | Browser-local song favorites are an independent Phase 9 feature; stored metadata is refreshed through the existing YouTube search boundary before queueing | REF-PARTY-01 did not expose a favorite interaction on the inspected state | Product decision | Do not copy an unobserved reference interaction; persist only versioned, bounded metadata and keep account sync out of this slice |
+| F-10 | Observation | In an authenticated active-song state, the reference tells phone users to cheer the current singer and claims that cheering boosts score | REF-PARTY-03 | High for the visible guidance; no evidence for delivery mechanics or score calculation | MyKaraoke may offer independent reactions, but must not infer or reproduce an unverified scoring algorithm |
+| F-11 | MyKaraoke decision | Reactions are four fixed values, authorized by the existing room session, server-rate-limited, ephemeral, and briefly animated on the paired TV with reduced-motion support | F-10 establishes only the concept of cheering an active singer | Product decision | Deliver reactions independently of scoring; store only short-window abuse budgets, never a reaction history |
+| F-12 | MyKaraoke decision | Fair rotation is an optional server-authoritative round-robin over normalized singer names; it preserves per-singer request order and a host manual move turns it off | No inspected reference state established a rotation rule | Product decision | Make fairness behavior explicit and testable instead of inferring hidden reference scheduling |
+| F-13 | MyKaraoke decision | A queue item may have one optional, distinct duet partner; the pair shares one fair-rotation turn and both names remain visible through playback | The retained Phase 9 host/search/current-singer evidence showed only one visible singer and did not establish a duet interaction | Product decision | Implement an accessible two-name assignment within MyKaraoke's existing protected queue boundary; do not claim the reference uses this model |
 
 Phase 3 reused the existing host-code, QR, and refresh evidence. No new REA
 capture was needed or claimed. The reference still does not establish its QR
@@ -217,6 +231,22 @@ listed visible controls and does not establish whether other party features
 exist in later room states. MyKaraoke therefore treats local favorites as an
 independent product decision and verifies its behavior against MyKaraoke's own
 storage and search boundaries.
+
+A later authenticated Phase 9 pass observed the reference's active-singer
+cheer guidance. It did not establish the guest control, payload, throttling,
+animation, delivery guarantees, or scoring mechanics. MyKaraoke therefore
+implements a distinct fixed reaction set over its existing private room topic,
+keeps the event ephemeral, and deliberately leaves scoring unchanged.
+
+The inspected reference states did not establish singer-rotation behavior.
+MyKaraoke's optional stable-round algorithm and explicit manual-host override
+are therefore independent product decisions verified against MyKaraoke rules,
+not a claim about the reference application.
+
+The same retained reference states did not expose a duet assignment control.
+That bounded absence is not evidence that the reference lacks duets elsewhere.
+MyKaraoke's two-singer queue record, validation, display, and fair-rotation
+semantics are an independent product decision.
 
 ## Design translation checklist
 

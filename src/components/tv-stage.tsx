@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient, type RealtimeChannel, type SupabaseClient } from "@supabase/supabase-js";
 import { Play } from "lucide-react";
+import { parseRoomReactionEvent, reactionEmoji, type RoomReactionEvent } from "@/lib/reactions/rules";
 import type { PlaybackSnapshot, PlaybackSong, TvPlayerEvent } from "@/lib/playback/state";
+import { singerLabel } from "@/lib/songs/singers";
 
 type Player = { playVideo(): void; pauseVideo(): void; destroy(): void };
 type PlayerEvent = { data: number };
@@ -92,7 +95,9 @@ export function TvStage({ code }: { code: string }) {
   const [state, setState] = useState<PlaybackSnapshot | null>(null);
   const [message, setMessage] = useState("");
   const [ended, setEnded] = useState(false);
+  const [reactions, setReactions] = useState<RoomReactionEvent[]>([]);
   const endedRef = useRef(false);
+  const reactionTimers = useRef(new Map<string, number>());
   const onEvent = useCallback((itemId: string, event: TvPlayerEvent, errorCode?: number) => {
     void fetch(`/api/rooms/${code}/playback/event`, {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -122,13 +127,94 @@ export function TvStage({ code }: { code: string }) {
     return () => { active = false; window.clearInterval(interval); };
   }, [code, router]);
 
+  useEffect(() => {
+    let active = true;
+    let client: SupabaseClient | undefined;
+    let channel: RealtimeChannel | undefined;
+    let retryTimer: number | undefined;
+    let retryCount = 0;
+
+    function showReaction(value: unknown) {
+      const event = parseRoomReactionEvent(value);
+      if (!event || endedRef.current) return;
+      setReactions((current) => current.some((item) => item.id === event.id) ? current : [...current.slice(-5), event]);
+      const existing = reactionTimers.current.get(event.id);
+      if (existing) window.clearTimeout(existing);
+      const timer = window.setTimeout(() => {
+        reactionTimers.current.delete(event.id);
+        setReactions((current) => current.filter((item) => item.id !== event.id));
+      }, 3_500);
+      reactionTimers.current.set(event.id, timer);
+    }
+
+    function scheduleRetry() {
+      if (!active || endedRef.current || retryTimer !== undefined) return;
+      const delay = Math.min(30_000, 1_000 * 2 ** Math.min(retryCount++, 5));
+      retryTimer = window.setTimeout(() => {
+        retryTimer = undefined;
+        void subscribe();
+      }, delay);
+    }
+
+    async function subscribe() {
+      if (!active || endedRef.current || channel) return;
+      try {
+        const response = await fetch(`/api/rooms/${code}/queue/realtime`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Realtime configuration unavailable");
+        const config = await response.json() as { enabled: boolean; url?: string; key?: string; topic?: string };
+        if (!active || !config.enabled || !config.url || !config.key || !config.topic) return;
+        const nextClient = createClient(config.url, config.key, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: `mk-tv-${code}-${crypto.randomUUID()}` },
+        });
+        await nextClient.realtime.setAuth(config.key);
+        if (!active || endedRef.current) {
+          void nextClient.realtime.disconnect();
+          return;
+        }
+        const nextChannel = nextClient.channel(config.topic, { config: { private: true } })
+          .on("broadcast", { event: "reaction" }, (message) => showReaction(message.payload))
+          .subscribe((status) => {
+            if (status === "SUBSCRIBED") retryCount = 0;
+            else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status) && channel === nextChannel) {
+              channel = undefined;
+              client = undefined;
+              void nextClient.removeChannel(nextChannel);
+              void nextClient.realtime.disconnect();
+              scheduleRetry();
+            }
+          });
+        client = nextClient;
+        channel = nextChannel;
+      } catch {
+        scheduleRetry();
+      }
+    }
+
+    void subscribe();
+    const online = () => { if (!channel) { if (retryTimer) window.clearTimeout(retryTimer); retryTimer = undefined; void subscribe(); } };
+    window.addEventListener("online", online);
+    const timers = reactionTimers.current;
+    return () => {
+      active = false;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      window.removeEventListener("online", online);
+      for (const timer of timers.values()) window.clearTimeout(timer);
+      timers.clear();
+      if (client && channel) { void client.removeChannel(channel); void client.realtime.disconnect(); }
+    };
+  }, [code]);
+
   return <main className="mx-auto flex min-h-screen max-w-7xl flex-col px-5 py-7 sm:px-10">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-5"><p className="text-xl font-black tracking-tight text-gradient">MyKaraoke <span className="text-white">TV</span></p><p className="font-mono text-sm tracking-widest text-[#ffc16f]">ROOM {code}</p></div>
     {ended ? <p role="alert" className="mt-12 text-[#ffb0a2]">This room ended or expired. Playback has stopped. Ask the host for a new room.</p> : null}
     {!state && !ended ? <p role="status" className="mt-12 text-muted-foreground">Connecting to the room…</p> : null}
     {state && !ended ? <div className="grid flex-1 items-center gap-10 py-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(15rem,0.6fr)]">
-      <div>{state.current ? <YoutubeStage key={state.current.id} song={state.current} desired={state.desired} onEvent={onEvent} /> : <div className="grid aspect-video min-h-[240px] place-items-center rounded-2xl border border-white/10 bg-white/5 p-8 text-center"><div><p className="text-3xl font-black">Waiting for the next song</p><p className="mt-3 text-muted-foreground">The host will start playback when the party is ready.</p></div></div>}</div>
-      <aside className="rounded-2xl border border-white/10 bg-white/5 p-6"><p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffc16f]">On stage</p><h1 className="mt-3 text-2xl font-black leading-tight">{state.current?.title ?? "No current song"}</h1><p className="mt-3 text-lg text-[#ffe4cd]">{state.current ? `Singer: ${state.current.singerName}` : "Waiting for the host"}</p><p className="mt-5 text-sm text-muted-foreground">Player state: {state.observed}</p>{state.observed === "blocked" ? <p role="alert" className="mt-3 text-sm text-[#ffc16f]">Playback was blocked. Press Play in the YouTube player on this display.</p> : null}{state.observed === "error" ? <p role="alert" className="mt-3 text-sm text-[#ffb0a2]">YouTube could not play this video (error {state.errorCode ?? "unknown"}). Ask the host to skip it.</p> : null}{state.next ? <div className="mt-6 border-t border-white/10 pt-5"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Up next</p><p className="mt-2 font-semibold">{state.next.title}</p><p className="text-sm text-muted-foreground">{state.next.singerName}</p></div> : null}</aside>
+      <div className="relative">{state.current ? <YoutubeStage key={state.current.id} song={state.current} desired={state.desired} onEvent={onEvent} /> : <div className="grid aspect-video min-h-[240px] place-items-center rounded-2xl border border-white/10 bg-white/5 p-8 text-center"><div><p className="text-3xl font-black">Waiting for the next song</p><p className="mt-3 text-muted-foreground">The host will start playback when the party is ready.</p></div></div>}
+        <div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 h-40 overflow-hidden" aria-live="polite" aria-label="Party reactions">
+          {reactions.map((reaction, index) => <div key={reaction.id} className="tv-reaction absolute bottom-0 rounded-2xl border border-white/20 bg-[#17101d]/90 px-4 py-2 shadow-2xl motion-reduce:animate-none" style={{ left: `${8 + ((index * 17) % 72)}%` }}><span className="text-4xl" aria-hidden="true">{reactionEmoji(reaction.reaction)}</span><span className="ml-2 text-sm font-bold text-white">{reaction.sender}</span></div>)}
+        </div>
+      </div>
+      <aside className="rounded-2xl border border-white/10 bg-white/5 p-6"><p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffc16f]">On stage</p><h1 className="mt-3 text-2xl font-black leading-tight">{state.current?.title ?? "No current song"}</h1><p className="mt-3 text-lg text-[#ffe4cd]">{state.current ? `Singer: ${singerLabel(state.current)}` : "Waiting for the host"}</p><p className="mt-5 text-sm text-muted-foreground">Player state: {state.observed}</p>{state.observed === "blocked" ? <p role="alert" className="mt-3 text-sm text-[#ffc16f]">Playback was blocked. Press Play in the YouTube player on this display.</p> : null}{state.observed === "error" ? <p role="alert" className="mt-3 text-sm text-[#ffb0a2]">YouTube could not play this video (error {state.errorCode ?? "unknown"}). Ask the host to skip it.</p> : null}{state.next ? <div className="mt-6 border-t border-white/10 pt-5"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Up next</p><p className="mt-2 font-semibold">{state.next.title}</p><p className="text-sm text-muted-foreground">{singerLabel(state.next)}</p></div> : null}</aside>
     </div> : null}
     {message ? <p role="status" className="pb-4 text-sm text-[#ffc16f]">{message}</p> : null}
     <p className="border-t border-white/10 pt-4 text-xs text-muted-foreground">YouTube playback uses the official embedded player. This display never receives host controls.</p>

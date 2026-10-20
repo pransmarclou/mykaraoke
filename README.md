@@ -3,16 +3,23 @@
 **Your songs. Your stage. Your party.**
 
 MyKaraoke is a web-first karaoke party platform by Nook Studio. The current
-Phase 8 implementation lets a host create a temporary room, guests join, and everyone
+Phase 9 implementation lets a host create a temporary room, guests join, and everyone
 see a shared roster and song queue. With a server YouTube API key, guests can
 search for embeddable karaoke videos, assign a singer, and add up to three
 active songs. The host can reorder, skip, or remove entries. A paired TV/browser
 can play through the official YouTube player while the host controls playback.
 Live local search and a desktop sample-video playback check passed. The host
 room now includes a local-only Microphone Studio with input selection, meter,
-gain, mute, monitoring, compression, and reverb. Lifecycle release checks and
-real microphone hardware verification remain pending; payments are planned in
-[the functional build phases](Docs/build-phases.md).
+gain, mute, monitoring, compression, and reverb. Hosts and guests can keep
+browser-local favorites and send fixed, rate-limited reactions that briefly
+appear on the paired TV while a singer is active. Songs can name a distinct
+duet partner, and both singers remain visible through the queue and TV stage.
+The host can also enable fair singer rotation and manually override it with the
+existing order controls.
+Lifecycle release checks,
+the dedicated hosted-test reaction journey, and real microphone hardware
+verification remain pending; payments are planned in [the functional build
+phases](Docs/build-phases.md).
 
 Delivery order: finish a usable browser MVP for phones, laptops, and supported
 TV browsers first. Later, installed iOS/Android apps become the main personal
@@ -168,8 +175,10 @@ unique active positions, a version check for host actions, and a request UUID
 for safe retries. The same guest cannot queue the same video twice while it is
 active, and can hold at most three active entries.
 
-Supabase Realtime broadcasts only a queue-version invalidation on a private
-random room topic. A checked server route gives room members that topic; the
+Supabase Realtime broadcasts queue-version invalidations on a private random
+room topic. The same topic carries typed, ephemeral party reactions to the
+paired TV; it never carries microphone audio. A checked server route gives
+authorized room members or the paired TV that topic; the
 client then refetches the authenticated queue snapshot. Three-second polling
 and online-event refresh reconcile missed WebSocket events. Upcoming-queue
 skip removes an entry; playback skip advances the active song.
@@ -185,6 +194,19 @@ server transactions advance the queue on end or host skip. Guests see the
 current and next singer without receiving playback authority. Some videos
 reject embedding even after the Data API reports them eligible; the TV shows
 the error and asks the host to skip. A physical smart TV has not been tested.
+
+While a singer is current, host and guest controllers can send one of four
+fixed reactions. The server validates the room session and limits each actor to
+six reactions per ten seconds. The event is not stored; the TV validates it,
+shows it for 3.5 seconds, and honors reduced-motion preferences. This feature
+does not calculate or change a score.
+
+Fair singer rotation is off by default. When enabled, the server arranges only
+waiting songs into stable singer rounds while preserving each singer's request
+order. If the current singer has another waiting song, the next round begins
+with someone else. A host Up/Down move turns rotation off and keeps the manual
+order as the explicit override. A duet pair shares one performer turn; swapping
+the primary and partner names does not create a separate rotation identity.
 
 ## Project context
 

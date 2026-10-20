@@ -369,8 +369,11 @@ UI labels all unverified or unsupported combinations accurately.
 
 **Status (2026-10-20): In build by explicit owner exception.** The owner chose
 to defer, not accept, the remaining Phase 7–8 verification. The first Phase 9
-slice implements browser-local song favorites; the other party features and
-the combined acceptance gate remain open.
+slices implement browser-local song favorites, scoped rate-limited TV reactions,
+optional fair singer rotation with manual host override, and two-singer duet
+assignment across queue and playback surfaces. The Phase 9
+migrations and multi-context browser journeys still need the dedicated hosted
+test project; the other party features and combined acceptance gate remain open.
 
 ### User-facing outcome
 
@@ -652,7 +655,7 @@ Update this table only with evidence, never optimism.
 | 6 | ACCEPTED | Unit 15/15, integration 16/16, Playwright 20/20 and static/schema checks passed 2026-10-18 | Official sample played in desktop Chromium; two karaoke embeds failed; physical TV untested | Owner asked to continue, 2026-10-19 |
 | 7 | IMPLEMENTED, VERIFICATION PENDING | Unit 15/15, integration 18/18, lint/typecheck/DB lint, production build, isolated desktop/mobile four-session journeys, hosted create/persist/authorized-close smoke, and 25 non-mutating production shell checks passed 2026-10-19; Firefox is blocked before navigation by the documented macOS 27 runner issue | Production HTTPS is Ready and real Safari host/reload checks passed; separate hosted test project, Firefox coverage, physical phone, and TV-browser checks remain | Owner review pending |
 | 8 | IMPLEMENTED, VERIFICATION PENDING | Unit 19/19, lint/typecheck/build, and focused desktop/mobile microphone recovery journeys passed | Real Safari verified MacBook Pro microphone selection, input activity, and mute with monitoring off; Windows, USB, Bluetooth, safe monitoring, feedback, disconnect/recovery, and measured latency checks remain | Owner review pending |
-| 9 | IN BUILD | Local-favorites rules pass in the unit suite; full Phase 9 verification remains open | Browser interaction and multi-context party verification remain open | Owner authorized Phase 9 start while deferring Phase 7–8 checks, 2026-10-20 |
+| 9 | IN BUILD | Favorites, reaction payload, fair-rotation, and duet assignment rules pass in the unit suite; reaction/rotation/duet integration and multi-context tests are authored but not run without the allowlisted hosted test project | Browser interaction and physical TV verification remain open | Owner authorized Phase 9 start while deferring Phase 7–8 checks, 2026-10-20 |
 | 10 | NOT STARTED | — | — | — |
 | N1 | NOT STARTED | — | — | — |
 | N2 | NOT STARTED | — | — | — |

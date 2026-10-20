@@ -17,7 +17,9 @@ explicitly authorized Phase 9 work while deferring the remaining Phase 7–8
 verification.
 Phase 8 is implemented with mocked browser verification, but must not be called
 accepted until its real hardware matrix and feedback/latency checks pass.
-Phase 9 is in build; local browser favorites are its first functional slice.
+Phase 9 is in build; local browser favorites, ephemeral TV reactions, fair
+singer rotation, and duet singer assignment are implemented functional slices
+with hosted verification pending.
 
 Work one functional phase at a time. A phase is complete only after its
 behavior is implemented, tested, documented, and accepted. Do not build all
