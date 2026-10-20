@@ -682,15 +682,31 @@ owner reviews the remaining Phase 7 and Phase 8 evidence.
   live MVP data.
 - macOS hardware inventory found the built-in MacBook Pro microphone and one
   additional Apple microphone labelled `Prans Microphone`, both at 48 kHz.
-  Inventory is not a functional test: browser permission, capture, monitoring,
-  feedback, and latency were not exercised. No USB or Bluetooth microphone and
-  no Windows machine were detected in the available environment.
+  No USB or Bluetooth microphone and no Windows machine were detected in the
+  available environment.
+- Real Safari production verification completed the built-in Mac capture slice.
+  Room `TEZ8A3` was created at `https://mykaraoke-virid.vercel.app/host`, a full
+  navigation restored the same private host room, and Safari's site-specific
+  microphone permission was set to Allow with the owner's approval. Microphone
+  Studio selected `MacBook Pro Microphone`, reported
+  `Mic ready · monitor off`, exposed `Prans Microphone` as the only other input,
+  and its real input meter moved from 0% to 2%. The local mute control changed
+  to `Unmute mic` and returned to `Mute mic` after being restored. Monitoring
+  was never started, so no audio was played back, uploaded, or recorded and no
+  feedback or latency claim is made. Closing the temporary Safari tabs stopped
+  capture and restored the owner's prior Safari tab.
+- The first in-app-browser permission attempt created room `M38QMD` but that
+  browser surface never exposed its permission decision. Both exact temporary
+  rooms (`M38QMD` and `TEZ8A3`) were then marked closed in hosted PostgreSQL and
+  their live room sessions were revoked. No broad cleanup or automated
+  mutating suite ran against MVP data.
 - Remaining gate work: provision and exactly allowlist a separate hosted test
   database; resolve or manually cover Firefox; run the real multi-context
-  mutation/reconnect journey there; and complete microphone permission,
-  monitoring-with-headphones, disconnect/recovery, feedback, and measured
-  latency checks on the named Mac/Windows, built-in, USB, and Bluetooth matrix.
-  Phase 7 and Phase 8 remain unaccepted, so Phase 9 has not started.
+  mutation/reconnect journey there; and complete monitoring-with-headphones,
+  disconnect/recovery, feedback, and measured latency checks on the named
+  Mac/Windows, built-in, USB, and Bluetooth matrix. Built-in Mac capture in
+  Safari is accepted only for the evidence above; Phase 7 and Phase 8 remain
+  unaccepted overall, so Phase 9 has not started.
 
 ## Session handoff template
 
