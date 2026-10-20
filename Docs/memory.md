@@ -715,6 +715,17 @@ owner reviews the remaining Phase 7 and Phase 8 evidence.
   Mac/Windows, built-in, USB, and Bluetooth matrix. Built-in Mac capture in
   Safari is accepted only for the evidence above; Phase 7 and Phase 8 remain
   unaccepted overall, so Phase 9 has not started.
+- A follow-up release check found the current production deployment in Vercel
+  `Ready` state with the public aliases attached. Fresh read-only requests to
+  `/`, `/host`, and `/join` returned 200 and an unknown route returned 404.
+  Vercel lists the required application, Supabase, PostgreSQL, YouTube, and
+  room-rate-limit configuration names for Production as encrypted values; no
+  value was printed or copied into documentation.
+- The same follow-up hardware inventory still exposed only the built-in
+  `MacBook Pro Speakers` as the default output. No wired headphone, USB audio
+  output, or Bluetooth output was available, so monitoring was deliberately
+  not started and feedback or latency was not inferred. This is a physical
+  hardware gate, not a software pass or failure.
 
 ## Session handoff template
 

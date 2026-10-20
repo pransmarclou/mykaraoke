@@ -3,8 +3,8 @@
 ## Implementation status
 
 As of 2026-10-19, Phase 8 Local Microphone Studio is implemented, but real
-hardware verification is pending. Phase 7's broad browser/deployment gate also
-remains open. A
+hardware verification is pending. The production HTTPS deployment is live;
+Phase 7's broad browser and real-device gate remains open. A
 host can create a 24-hour room and invite guests. Guests can join, search
 server-verified YouTube metadata when an API key is configured, assign a singer,
 and add to a shared queue. Host-only order, skip, and remove actions are backed
@@ -14,7 +14,8 @@ IFrame API while the host starts, pauses, resumes, and skips. A live desktop
 player smoke check passed with an official sample video; two karaoke results
 returned YouTube embed error 150, and physical TVs remain untested.
 Room expiry warnings, terminal states, snapshot reconciliation, safe retries,
-queue-write limits, and a server-only cleanup command are implemented locally.
+queue-write limits, and a server-only cleanup command are implemented and
+deployed.
 The host can explicitly enable a local input and use metering, gain, mute,
 monitor volume, compression, and reverb in a browser-only graph that remains
 separate from YouTube. Accounts and payments are not implemented. See
