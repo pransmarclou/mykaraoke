@@ -672,8 +672,16 @@ owner reviews the remaining Phase 7 and Phase 8 evidence.
   evidence of compatibility with a physical smart-TV browser.
 - Firefox did not reach MyKaraoke. Playwright Firefox 157 exited before
   navigation with `Could not find profile folder`; the same runner failure
-  repeated with one worker and with `TMPDIR=/tmp`. Record this as a local test
-  runtime blocker, not a MyKaraoke product failure or pass.
+  repeated with one worker and with `TMPDIR=/tmp`. The machine is running
+  macOS 27.0.1 on arm64. The exact bundled Firefox binary also failed outside
+  Playwright when launched manually against fresh profiles in both `/tmp` and
+  the user's Playwright cache, which rules out the test config and application
+  navigation as the failing boundary. This closely matches the open Playwright
+  macOS 27/TCC report
+  [microsoft/playwright#42768](https://github.com/microsoft/playwright/issues/42768).
+  No Full Disk Access or other OS security setting was changed. Record this as
+  an upstream/local test runtime blocker, not a MyKaraoke product failure or
+  pass.
 - Typecheck and lint passed after adding the production configuration.
 - The environment has no `MYKARAOKE_TEST_DB_HOST`, and the authenticated
   Supabase CLI account does not expose either the MVP project or a separate
