@@ -133,12 +133,14 @@ host per minute; failed version conflicts do not consume a slot.
 
 `npm run cleanup:rooms` marks expired rooms closed, revokes host sessions and
 TV pairing authority, removes stale presence/attempt counters, and purges
-rooms seven days after expiry. It must run with a server-only `DATABASE_URL`;
-schedule it hourly in the eventual nonproduction/production environment. The
-script is implemented, but no hosted scheduler has been configured or verified.
-The CLI refuses a hosted database unless `MYKARAOKE_CLEANUP_DB_HOST` matches
-its exact hostname, so the intended MVP project must be checked before
-scheduling it.
+rooms seven days after expiry. It uses the server-only `POSTGRES_URL` or
+`DATABASE_URL`. Production also exposes a private scheduled endpoint at
+`GET /api/internal/rooms/cleanup`; Vercel invokes it daily at 07:00 UTC using
+the encrypted `CRON_SECRET`. Both paths refuse a hosted database unless
+`MYKARAOKE_CLEANUP_DB_HOST` exactly matches the selected connection hostname.
+Cleanup logs contain only the outcome, duration, and aggregate closed/deleted
+counts—never room codes, credentials, or database URLs. Room access checks
+enforce the 24-hour expiry independently of the cleanup schedule.
 
 ## Guest presence and host departure
 

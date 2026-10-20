@@ -30,8 +30,10 @@ playback snapshot reconciliation, Realtime retry with polling fallback, and
 stable browser retry keys that reach the existing server idempotency checks.
 The new queue-write budget is transactional and RLS-protected. An explicit
 server-only cleanup command closes expired rooms, revokes device authority,
-and purges old rows; scheduling it is a deployment responsibility. Host tab
-departure does not transfer ownership or close the room.
+and purges old rows. A Vercel Cron route runs that same idempotent operation
+daily, after verifying a server-only bearer secret and an exact allowlisted
+database hostname; structured logs contain aggregate counts and timing only.
+Host tab departure does not transfer ownership or close the room.
 
 Phase 8 adds a browser-only `MicrophoneStudio` Client Component and pure audio
 rules under `src/lib/microphone/`. A user gesture requests `getUserMedia`; the

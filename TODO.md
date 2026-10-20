@@ -5,8 +5,10 @@
   shared in chat before production use; local live search is already verified.
 - Phase 7 gate: diagnose intermittent local 503s under the full browser suite;
   rerun lint, typecheck, integration, Playwright, and local DB lint. Then
-  validate a nonproduction HTTPS deployment with a scheduled cleanup run and
-  real phone/TV-browser checks before asking for owner acceptance.
+  validate a separately allowlisted hosted test deployment and real
+  phone/TV-browser checks before asking for owner acceptance. The production
+  cleanup schedule is configured; its first natural invocation remains an
+  operational check rather than a reason to mutate live data manually.
 - Phase 8 gate: manually verify permission, input switching, monitoring,
   feedback safety, disconnect recovery, and measured latency on actual Mac and
   Windows hardware with built-in, USB/audio-interface, and available Bluetooth
@@ -32,9 +34,8 @@
 - Review and repair hosted Supabase migration history, confirm project ownership
   and backups, provision a separate hosted test project, and configure the same
   additive migrations there before running destructive integration/E2E suites.
-- Before deployment: move the existing hosted Supabase values into the chosen
-  deployment secret store, set HTTPS `APP_ORIGIN`, verify a trusted client-IP
-  header for creation limits, and schedule expired-row cleanup.
+- Before release acceptance: verify the first natural cleanup invocation in
+  Vercel runtime logs and retain only privacy-safe operational fields.
 - When a physical phone and deployed HTTPS origin are available, scan the QR,
   join from that phone, and verify real multi-device/reconnect behavior;
   localhost QR is same-computer only.

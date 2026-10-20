@@ -6,11 +6,11 @@ to evidence or code rather than restating large documents.
 
 ## Snapshot
 
-- Last updated: 2026-10-19
+- Last updated: 2026-10-20
 - Current stage: Phase 8 — Local Microphone Studio
 - Current status: Phase 8 implemented; real hardware verification pending
-- Repository state: Phase 8 and the Vercel production database repair are
-  committed and pushed to `main`; the working tree is clean at this handoff
+- Repository state: Phase 8, the Vercel production database repair, and the
+  guarded scheduled-cleanup slice are committed and pushed to `main`
 - Current phase gate: Verify microphone behavior and measured latency on the
   documented real-device matrix; Phase 7's full multi-device and network-loss
   release checks remain open
@@ -240,19 +240,19 @@ driver behavior.
 Phase 7 also cannot be accepted yet. The isolated desktop and mobile four-session
 journeys passed, but a broad serial browser run intermittently returned 503.
 Hosted room create/persist/authorized-close now passes against the configured
-Supabase project, but a deployed HTTPS app, hosted cleanup schedule, trusted
-proxy IP header, separate hosted test project, migration-history review, and
-real cross-device checks remain unverified. Rotate or restrict the key shared
-in chat before production. Physical smart-TV behavior and video-specific embed
-failures remain unresolved.
+Supabase project. The HTTPS app, trusted proxy header, and guarded cleanup
+schedule are configured, but the first natural cleanup invocation, separate
+hosted test project, migration-history review, and real cross-device checks
+remain unverified. Rotate or restrict the key shared in chat before production.
+Physical smart-TV behavior and video-specific embed failures remain unresolved.
 
 ## Next approved action
 
 Owner performs or authorizes the Phase 8 real-hardware matrix while engineering
 also validates hosted migration history and a separate online test project,
 reproduces the Phase 7 intermittent 503, reruns the full browser suite there,
-and validates a MyKaraoke HTTPS deployment. Do not begin Phase 9 until the
-owner reviews the remaining Phase 7 and Phase 8 evidence.
+and reviews the first natural cleanup invocation. Do not begin Phase 9 until
+the owner reviews the remaining Phase 7 and Phase 8 evidence.
 
 ## Decision log
 
@@ -726,6 +726,33 @@ owner reviews the remaining Phase 7 and Phase 8 evidence.
   output, or Bluetooth output was available, so monitoring was deliberately
   not started and feedback or latency was not inferred. This is a physical
   hardware gate, not a software pass or failure.
+
+## Phase 7 scheduled cleanup and observability — 2026-10-20
+
+- Added `GET /api/internal/rooms/cleanup` and a Vercel Cron configuration for
+  07:00 UTC daily. Daily is compatible with every Vercel plan; the original
+  hourly idea would fail deployment on a Hobby project. All room access paths
+  already enforce the 24-hour expiry, so schedule precision affects only
+  closure bookkeeping and seven-day purging.
+- The route requires Vercel's server-only `CRON_SECRET` bearer token and an
+  exact `MYKARAOKE_CLEANUP_DB_HOST` match for the selected pooled database.
+  Those two Production values were added as encrypted Vercel variables without
+  printing or committing their contents. The CLI now reuses the same target
+  guard and supports the pooled `POSTGRES_URL` selected in serverless runtime.
+- The existing transaction is idempotent under duplicate delivery: it sets
+  expired open rooms closed, revokes their sessions/device authority, removes
+  stale counters and presence, and deletes rows only after the retention
+  window. Structured runtime events include outcome, duration, and aggregate
+  counts only; they omit room codes, credentials, database URLs, and error
+  messages.
+- Verification: cleanup policy and unauthorized-route coverage passed as part
+  of 28/28 unit tests; lint, typecheck, optimized Next.js build, and diff checks passed. The
+  build identifies the cleanup route as a dynamic Node.js function. No manual
+  authorized cleanup request or database-mutating suite ran against live MVP
+  data. Confirm the first natural scheduled invocation in Vercel runtime logs.
+- Phase 7 and Phase 8 remain verification-pending for the previously recorded
+  hosted test database, browser/device, and audio-hardware gates. Phase 9 has
+  not started.
 
 ## Session handoff template
 

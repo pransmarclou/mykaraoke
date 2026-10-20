@@ -181,7 +181,8 @@ authenticated snapshots. Phase 6 added `playback_state`, short-lived pairing
 codes, a rotating designated-device credential, and idempotent host command
 records. The remaining tables belong to the phases that first use them.
 Phase 7 added a private queue-mutation budget table and an idempotent cleanup
-command; its hourly hosted schedule remains deployment work.
+command. Vercel invokes the guarded cleanup route daily at 07:00 UTC; room
+expiry itself remains immediate because every access path checks `expires_at`.
 
 ## UI and brand direction
 
