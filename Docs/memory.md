@@ -9,10 +9,11 @@ to evidence or code rather than restating large documents.
 - Last updated: 2026-10-19
 - Current stage: Phase 8 — Local Microphone Studio
 - Current status: Phase 8 implemented; real hardware verification pending
-- Repository state: Phase 7 is committed and pushed to `main`; Phase 8 changes
-  are in the working tree and have not been committed by this handoff
+- Repository state: Phase 8 and the Vercel production database repair are
+  committed and pushed to `main`; the working tree is clean at this handoff
 - Current phase gate: Verify microphone behavior and measured latency on the
-  documented real-device matrix; Phase 7 deployment/device checks remain open
+  documented real-device matrix; Phase 7's full multi-device and network-loss
+  release checks remain open
 - Delivery direction: Finish the phone/laptop/TV-browser web MVP through Phase
   10; only then begin the installed iOS/Android N1–N5 track and native
   subscriptions. The owner explicitly advanced work into Phase 8 on 2026-10-19.
@@ -647,6 +648,14 @@ owner reviews the remaining Phase 7 and Phase 8 evidence.
   created a room with 201, reloaded `/host` with its private cookie and found
   the same room code, and closed it with 200. A second independent run repeated
   201/persisted/200 and exited cleanly; both temporary rooms were closed.
+- A final real-browser production check opened `/host`, found Create enabled
+  with no availability warning, clicked it, and rendered room `J4NPMB` with its
+  code, invite URL, QR, host controls, queue, playback, and participant panels.
+  A full reload restored the same room from its private HTTP-only host cookie.
+  The browser console contained no warnings or errors, and Vercel logs showed
+  the room presence, queue, playback, and Realtime endpoints serving the live
+  dashboard. The exact verification room was then marked closed in hosted
+  PostgreSQL; reloading returned the browser to the new-room form.
 
 ## Session handoff template
 
