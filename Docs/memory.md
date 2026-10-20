@@ -7,16 +7,18 @@ to evidence or code rather than restating large documents.
 ## Snapshot
 
 - Last updated: 2026-10-20
-- Current stage: Phase 8 — Local Microphone Studio
-- Current status: Phase 8 implemented; real hardware verification pending
-- Repository state: Phase 8, the Vercel production database repair, and the
-  guarded scheduled-cleanup slice are committed and pushed to `main`
-- Current phase gate: Verify microphone behavior and measured latency on the
-  documented real-device matrix; Phase 7's full multi-device and network-loss
-  release checks remain open
+- Current stage: Phase 9 — Singer and party experience
+- Current status: In build; browser-local favorites are the first implemented
+  slice. Phases 7–8 remain implemented with verification pending
+- Repository state: Phase 9 local-favorites code, tests, and documentation are
+  in the current `main` change set; the prior cleanup deployment remains live
+- Current phase gate: Complete and jointly verify all Phase 9 party features.
+  The deferred Phase 7 multi-device and Phase 8 hardware/audio checks remain
+  open and are not acceptance evidence
 - Delivery direction: Finish the phone/laptop/TV-browser web MVP through Phase
   10; only then begin the installed iOS/Android N1–N5 track and native
-  subscriptions. The owner explicitly advanced work into Phase 8 on 2026-10-19.
+  subscriptions. The owner explicitly advanced work into Phase 8 on 2026-10-19
+  and Phase 9 on 2026-10-20 while deferring the remaining Phase 7–8 checks.
 - Primary reference target: `https://okevideoke.online/`
 - Dedicated host reference: `https://okevideoke.online/host`
 - Paywall reference: Visible `/premium` route and root-page entry observed;
@@ -248,11 +250,11 @@ Physical smart-TV behavior and video-specific embed failures remain unresolved.
 
 ## Next approved action
 
-Owner performs or authorizes the Phase 8 real-hardware matrix while engineering
-also validates hosted migration history and a separate online test project,
-reproduces the Phase 7 intermittent 503, reruns the full browser suite there,
-and reviews the first natural cleanup invocation. Do not begin Phase 9 until
-the owner reviews the remaining Phase 7 and Phase 8 evidence.
+Continue Phase 9 in small independent slices. First verify local favorites in a
+non-live-data browser journey, then implement the next party feature with its
+same-slice tests. Do not run database-mutating tests against live MVP data.
+Phases 7–8 remain verification-pending until the previously documented hosted
+test-project, browser/device, and audio-hardware matrices are completed.
 
 ## Decision log
 
@@ -291,6 +293,7 @@ the owner reviews the remaining Phase 7 and Phase 8 evidence.
 | 2026-10-19 | Proceed into Phase 8 while retaining Phase 7 limitations | Owner explicitly requested the next phase after Phase 7 was pushed | Build local microphone behavior now; keep deployment/device gaps visible and do not claim either gate complete |
 | 2026-10-19 | Set the future Free/Premium song-credit model | Owner chose 10 free songs, another 10 after a Google rewarded ad, and Premium without MyKaraoke ads | Document it for native N4; keep the current web MVP ungated, require explicit opt-in and verified rewards, and do not promise removal of YouTube ads |
 | 2026-10-19 | Make hosted Supabase the MVP source of truth | Owner explicitly asked to prioritize online Supabase and drop local | Removed the development-only local override, stopped the local stack without deleting its preserved data, verified hosted room create/persist/close, and require a separate hosted test project for destructive suites |
+| 2026-10-20 | Begin Phase 9 while deferring Phase 7–8 verification | Owner explicitly authorized the exception | Phase 9 may proceed in testable slices; Phase 7–8 remain verification-pending and no unsupported device/browser claim becomes accepted |
 
 ## 2026-10-17 session handoff
 
@@ -761,6 +764,34 @@ the owner reviews the remaining Phase 7 and Phase 8 evidence.
 - Phase 7 and Phase 8 remain verification-pending for the previously recorded
   hosted test database, browser/device, and audio-hardware gates. Phase 9 has
   not started.
+
+## Phase 9 local favorites slice — 2026-10-20
+
+- Owner exception: The owner explicitly authorized Phase 9 and deferred the
+  remaining Phase 7–8 verification. This starts Phase 9 but does not accept,
+  close, or weaken either earlier gate.
+- Completed: Hosts and guests can save or remove song favorites on the current
+  browser, see the saved list, and request a favorite for the current singer.
+  The app stores only bounded, versioned YouTube metadata and re-runs the
+  server search before queueing so an expired cached result ID is never trusted.
+- Storage/account boundary: Favorites are capped at 100, tolerate malformed or
+  unavailable browser storage, update across same-origin tabs, and do not sync
+  to an account. Account sync remains a later optional Phase 9 slice.
+- Tests run: Unit 31/31, lint, TypeScript, optimized production build, and diff
+  checks passed. Database-mutating integration and browser suites were not run
+  because the configured database is the live MVP project and no allowlisted
+  hosted test project is available.
+- REA evidence: `ev_703e372df7ab63718e48be292ad8a2ec62a40361384d17b61c5c4d86555a72f6`
+  passively inventoried one fresh reference host surface. It showed existing
+  host tabs and controls but no visible favorite interaction; absence on that
+  state is not a claim about the full reference product.
+- Known limitations: Adding a favorite consumes the existing search allowance
+  and succeeds only if the same YouTube video is still returned and verified.
+  Browser-local data can be cleared by the user or browser. No cross-device or
+  account ownership is claimed, and manual browser interaction remains open.
+- Next exact action: Run a favorites browser journey against an exactly
+  allowlisted hosted test project, then continue with the next independent
+  Phase 9 slice. Keep the deferred Phase 7–8 evidence visible.
 
 ## Session handoff template
 

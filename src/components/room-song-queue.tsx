@@ -1,15 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import { createClient, type SupabaseClient, type RealtimeChannel } from "@supabase/supabase-js";
-import { ArrowDown, ArrowUp, ListMusic, Music2, Search, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Heart, ListMusic, Music2, Search, Trash2 } from "lucide-react";
+import {
+  favoriteFromSong,
+  parseSongFavorites,
+  serializeSongFavorites,
+  SONG_FAVORITES_STORAGE_KEY,
+  toggleSongFavorite,
+  type FavoriteSong,
+} from "@/lib/songs/favorites";
 import type { QueueSnapshot } from "@/lib/songs/queue";
 import type { SongResult } from "@/lib/songs/youtube";
 import { youtubeThumbnailUrl } from "@/lib/songs/thumbnail";
 
 type SearchState = { status: "idle" | "loading" | "results" | "empty" | "error"; songs: SongResult[]; message?: string };
 const emptyQueue: QueueSnapshot = { version: 0, items: [] };
+const favoritesChangedEvent = "mykaraoke:favorites-changed";
+
+function favoriteStorageSnapshot(): string | null {
+  try { return window.localStorage.getItem(SONG_FAVORITES_STORAGE_KEY); }
+  catch { return null; }
+}
+function emptyFavoriteStorageSnapshot(): null { return null; }
+function subscribeToFavoriteStorage(notify: () => void) {
+  const stored = (event: StorageEvent) => { if (event.key === null || event.key === SONG_FAVORITES_STORAGE_KEY) notify(); };
+  window.addEventListener("storage", stored);
+  window.addEventListener(favoritesChangedEvent, notify);
+  return () => { window.removeEventListener("storage", stored); window.removeEventListener(favoritesChangedEvent, notify); };
+}
 async function responseError(response: Response): Promise<string> {
   try { return ((await response.json()) as { error?: string }).error ?? "Please try again."; }
   catch { return "Please try again."; }
@@ -33,6 +54,8 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
   const [query, setQuery] = useState("");
   const [singerName, setSingerName] = useState(singer);
   const [searchState, setSearchState] = useState<SearchState>({ status: "idle", songs: [] });
+  const favoriteStorage = useSyncExternalStore(subscribeToFavoriteStorage, favoriteStorageSnapshot, emptyFavoriteStorageSnapshot);
+  const favorites = useMemo(() => parseSongFavorites(favoriteStorage), [favoriteStorage]);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const pendingAdds = useRef(new Map<string, string>());
 
@@ -113,10 +136,10 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [code, query, queueState]);
 
-  async function add(song: SongResult) {
+  async function add(song: SongResult, workingKey = song.id) {
     if (queueState !== "connected") return;
     setQueueMessage("");
-    setWorkingId(song.id);
+    setWorkingId(workingKey);
     const requestKey = pendingAdds.current.get(song.id) ?? crypto.randomUUID();
     pendingAdds.current.set(song.id, requestKey);
     try {
@@ -131,6 +154,38 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
       setQueueMessage(`${song.title} added to the queue.`);
     } catch { setQueueMessage("Could not add this song. Check your connection and retry."); }
     finally { setWorkingId(null); }
+  }
+
+  function toggleFavorite(song: SongResult | FavoriteSong) {
+    const favorite = "id" in song ? favoriteFromSong(song) : song;
+    const next = toggleSongFavorite(favorites, favorite);
+    try {
+      window.localStorage.setItem(SONG_FAVORITES_STORAGE_KEY, serializeSongFavorites(next));
+      window.dispatchEvent(new Event(favoritesChangedEvent));
+      setQueueMessage(next.some((item) => item.youtubeId === favorite.youtubeId) ? `${favorite.title} saved to this browser.` : `${favorite.title} removed from favorites.`);
+    } catch {
+      setQueueMessage("This browser could not save favorites. Check its storage settings and try again.");
+    }
+  }
+
+  async function addFavorite(favorite: FavoriteSong) {
+    if (queueState !== "connected") return;
+    const workingKey = `favorite:${favorite.youtubeId}`;
+    setQueueMessage("");
+    setWorkingId(workingKey);
+    try {
+      const response = await fetch(`/api/rooms/${code}/search?q=${encodeURIComponent(favorite.title.slice(0, 80))}`, { cache: "no-store" });
+      if (!response.ok) { setQueueMessage(await responseError(response)); return; }
+      const { songs } = await response.json() as { songs: SongResult[] };
+      const current = songs.find((song) => song.youtubeId === favorite.youtubeId);
+      if (!current) { setQueueMessage("This favorite is not currently available in YouTube search. Try searching for another version."); return; }
+      setWorkingId(null);
+      await add(current, workingKey);
+    } catch {
+      setQueueMessage("Could not refresh this favorite. Check your connection and retry.");
+    } finally {
+      setWorkingId(null);
+    }
   }
 
   async function change(id: string, action: "up" | "down" | "remove" | "skip") {
@@ -162,11 +217,14 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
     {queueMessage ? <p role="status" className="mt-4 text-sm text-[#ffc16f]">{queueMessage}</p> : null}
     {queueState !== "ended" ? <div className="mt-8 border-t border-white/10 pt-7"><div className="flex items-center gap-2"><Search className="size-5 text-[#ffc16f]" aria-hidden="true" /><h3 className="text-lg font-bold">Find a karaoke song</h3></div><p className="mt-2 text-sm leading-6 text-muted-foreground">Searches YouTube for videos that report they support embedding. Playback availability is checked again when the host starts a song.</p>
       <label htmlFor={`singer-${role}`} className="mt-5 block text-sm font-semibold">Singer name</label><input id={`singer-${role}`} value={singerName} onChange={(event) => setSingerName(event.target.value)} maxLength={24} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white" />
+      <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4" data-testid="song-favorites"><div className="flex items-center gap-2"><Heart className="size-4 text-[#ff6e8f]" aria-hidden="true" /><h4 className="font-bold">Favorites on this browser</h4></div><p className="mt-1 text-xs text-muted-foreground">Saved only on this device. MyKaraoke refreshes YouTube availability before adding one.</p>
+        {favorites.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Use Save on a search result to keep it here.</p> : <ul className="mt-3 space-y-2">{favorites.map((favorite) => <li key={favorite.youtubeId} className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/5 p-3 sm:flex-row sm:items-center"><SongThumbnail youtubeId={favorite.youtubeId} /><div className="min-w-0 flex-1"><p className="font-semibold">{favorite.title}</p><p className="text-xs text-muted-foreground">{favorite.channelTitle} · {duration(favorite.durationSeconds)}</p></div><div className="flex gap-2 self-end sm:self-auto"><button type="button" disabled={workingId !== null || singerName.trim().length < 2 || queueState !== "connected"} onClick={() => void addFavorite(favorite)} className="rounded-lg bg-[#d92362] px-3 py-2 text-sm font-bold text-white disabled:opacity-50">{workingId === `favorite:${favorite.youtubeId}` ? "Checking…" : "Add"}</button><button type="button" aria-label={`Remove ${favorite.title} from favorites`} onClick={() => toggleFavorite(favorite)} className="queue-action"><Trash2 className="size-4" aria-hidden="true" /> Remove</button></div></li>)}</ul>}
+      </div>
       <label htmlFor={`song-search-${role}`} className="mt-5 block text-sm font-semibold">Search YouTube karaoke</label><input id={`song-search-${role}`} type="search" value={query} onChange={(event) => { setQuery(event.target.value); setSearchState({ status: "idle", songs: [] }); }} placeholder="Song or artist" maxLength={80} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white" />
       {searchState.status === "loading" ? <p role="status" className="mt-4 text-sm text-muted-foreground">Searching YouTube…</p> : null}
       {searchState.status === "empty" ? <p role="status" className="mt-4 text-sm text-muted-foreground">No supported results found. Try another song or artist.</p> : null}
       {searchState.status === "error" ? <p role="alert" className="mt-4 text-sm text-[#ffb0a2]">{searchState.message}</p> : null}
-      {searchState.status === "results" ? <ul className="mt-4 space-y-2" data-testid="search-results">{searchState.songs.map((song) => <li key={song.id} className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto]"><SongThumbnail youtubeId={song.youtubeId} /><div className="min-w-0"><p className="font-semibold">{song.title}</p><p className="text-xs text-muted-foreground">{song.channelTitle} · {duration(song.durationSeconds)} · YouTube</p></div><button type="button" disabled={workingId !== null || singerName.trim().length < 2 || queueState !== "connected"} onClick={() => void add(song)} className="col-span-2 justify-self-end rounded-lg bg-[#d92362] px-4 py-2 text-sm font-bold text-white disabled:opacity-50 sm:col-span-1">Add</button></li>)}</ul> : null}
+      {searchState.status === "results" ? <ul className="mt-4 space-y-2" data-testid="search-results">{searchState.songs.map((song) => { const saved = favorites.some((favorite) => favorite.youtubeId === song.youtubeId); return <li key={song.id} className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto]"><SongThumbnail youtubeId={song.youtubeId} /><div className="min-w-0"><p className="font-semibold">{song.title}</p><p className="text-xs text-muted-foreground">{song.channelTitle} · {duration(song.durationSeconds)} · YouTube</p></div><div className="col-span-2 flex justify-self-end gap-2 sm:col-span-1"><button type="button" aria-pressed={saved} onClick={() => toggleFavorite(song)} className="queue-action"><Heart className={`size-4 ${saved ? "fill-current text-[#ff6e8f]" : ""}`} aria-hidden="true" /> {saved ? "Saved" : "Save"}</button><button type="button" disabled={workingId !== null || singerName.trim().length < 2 || queueState !== "connected"} onClick={() => void add(song)} className="rounded-lg bg-[#d92362] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Add</button></div></li>; })}</ul> : null}
       <p className="mt-4 text-xs text-muted-foreground">Results and metadata provided by YouTube. Videos stay on YouTube; MyKaraoke does not download them.</p>
     </div> : null}
   </section>;

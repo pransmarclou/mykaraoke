@@ -33,9 +33,9 @@ vertical slices rather than a screen-first build.
 | 4 | Guest joining, membership, and presence | MVP | ACCEPTED |
 | 5 | YouTube discovery and shared queue | MVP | ACCEPTED |
 | 6 | Designated TV playback and host controls | MVP | READY FOR REVIEW |
-| 7 | MVP reconnection, lifecycle, and multi-device gate | MVP | NOT STARTED |
-| 8 | Local Microphone Studio | Microphone Studio | NOT STARTED |
-| 9 | Singer and party experience | Party Experience | NOT STARTED |
+| 7 | MVP reconnection, lifecycle, and multi-device gate | MVP | VERIFICATION PENDING |
+| 8 | Local Microphone Studio | Microphone Studio | VERIFICATION PENDING |
+| 9 | Singer and party experience | Party Experience | IN BUILD |
 | 10 | Cross-browser web MVP, compatibility, and launch | Web release | NOT STARTED |
 | N1 | Native app foundation and core party actions | iOS/Android | NOT STARTED |
 | N2 | App-scanned QR pairing to the web big screen | iOS/Android + web display | NOT STARTED |
@@ -367,6 +367,11 @@ UI labels all unverified or unsupported combinations accurately.
 
 ## Phase 9 — Singer and party experience
 
+**Status (2026-10-20): In build by explicit owner exception.** The owner chose
+to defer, not accept, the remaining Phase 7–8 verification. The first Phase 9
+slice implements browser-local song favorites; the other party features and
+the combined acceptance gate remain open.
+
 ### User-facing outcome
 
 Parties can use fair singer rotation, duets, throttled TV reactions, favorites,
@@ -647,7 +652,7 @@ Update this table only with evidence, never optimism.
 | 6 | ACCEPTED | Unit 15/15, integration 16/16, Playwright 20/20 and static/schema checks passed 2026-10-18 | Official sample played in desktop Chromium; two karaoke embeds failed; physical TV untested | Owner asked to continue, 2026-10-19 |
 | 7 | IMPLEMENTED, VERIFICATION PENDING | Unit 15/15, integration 18/18, lint/typecheck/DB lint, production build, isolated desktop/mobile four-session journeys, hosted create/persist/authorized-close smoke, and 25 non-mutating production shell checks passed 2026-10-19; Firefox is blocked before navigation by the documented macOS 27 runner issue | Production HTTPS is Ready and real Safari host/reload checks passed; separate hosted test project, Firefox coverage, physical phone, and TV-browser checks remain | Owner review pending |
 | 8 | IMPLEMENTED, VERIFICATION PENDING | Unit 19/19, lint/typecheck/build, and focused desktop/mobile microphone recovery journeys passed | Real Safari verified MacBook Pro microphone selection, input activity, and mute with monitoring off; Windows, USB, Bluetooth, safe monitoring, feedback, disconnect/recovery, and measured latency checks remain | Owner review pending |
-| 9 | NOT STARTED | — | — | — |
+| 9 | IN BUILD | Local-favorites rules pass in the unit suite; full Phase 9 verification remains open | Browser interaction and multi-context party verification remain open | Owner authorized Phase 9 start while deferring Phase 7–8 checks, 2026-10-20 |
 | 10 | NOT STARTED | — | — | — |
 | N1 | NOT STARTED | — | — | — |
 | N2 | NOT STARTED | — | — | — |

@@ -2,9 +2,10 @@
 
 ## Implementation status
 
-As of 2026-10-19, Phase 8 Local Microphone Studio is implemented, but real
-hardware verification is pending. The production HTTPS deployment is live;
-Phase 7's broad browser and real-device gate remains open. A
+As of 2026-10-20, Phase 9 is in build with browser-local song favorites as its
+first functional slice. The owner explicitly deferred, but did not accept, the
+remaining Phase 7 and Phase 8 verification. The production HTTPS deployment is
+live; Phase 7's broad browser and real-device gate remains open. A
 host can create a 24-hour room and invite guests. Guests can join, search
 server-verified YouTube metadata when an API key is configured, assign a singer,
 and add to a shared queue. Host-only order, skip, and remove actions are backed
@@ -18,8 +19,11 @@ queue-write limits, and a server-only cleanup command are implemented and
 deployed.
 The host can explicitly enable a local input and use metering, gain, mute,
 monitor volume, compression, and reverb in a browser-only graph that remains
-separate from YouTube. Accounts and payments are not implemented. See
-`memory.md` for verification and `build-phases.md` for the next gate.
+separate from YouTube. Hosts and guests can save validated song metadata to
+the current browser and refresh YouTube availability before adding a favorite
+later. Favorites do not sync to an account. Accounts and payments are not
+implemented. See `memory.md` for verification and `build-phases.md` for the
+next gate.
 
 ## Product summary
 

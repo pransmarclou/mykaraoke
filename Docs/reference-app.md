@@ -33,7 +33,8 @@ This ledger deliberately separates:
   functional phases that need it
 - REA Evidence IDs: Recorded below
 - Runtime scenarios captured: Main entry, host initial state, host search and
-  add, premium page, invalid join attempt
+  add, premium page, invalid join attempt, and a fresh Phase 9 host-control
+  inventory
 - Static assets or application bundles inspected: None
 - Credentials used: None
 - Findings approved for implementation: Independent host and join entry
@@ -147,6 +148,7 @@ large capture.
 | REF-PAY-01 | Discover the paywall | Fresh ordinary session | Follow one visible upgrade action or attempt one clearly labelled premium capability | Trigger, actual route/presentation, dismiss behavior | Observed root navigation to `/premium`; premium action during a party unresolved |
 | REF-PAY-02 | Compare visible plan states | Open paywall without checkout | Inspect plans and capability labels; do not enter payment data | Free/paid boundaries, account requirement, disclosures, unresolved checkout facts | Observed visible offer and payment instructions; no purchase |
 | REF-PAY-03 | Return to the party | Open paywall | Use the ordinary close/back action once | Return destination and preservation of prior state | Browser back returned to root; in-party return unresolved |
+| REF-PARTY-01 | Inventory visible party controls | Fresh host surface | Navigate to `/host`; wait for the initial surface; do not click, search, or join | Visible party controls and tabs relevant to Phase 9 | Observed with REA; one initial host state only |
 
 ## Evidence ledger
 
@@ -163,6 +165,7 @@ Add a row for every retained REA result or manual verification source.
 | 2026-10-18 | `ev_b9cc1bd9fef9b00baf678731467a1554dd472993eacbedd3fdd97978efdcf17c` | REF-JOIN-01 preparation | `/host` | REA controlled fresh browser capture | Host displayed a four-character code and QR in a fresh temporary browser profile | Capture did not establish QR destination or whether room persisted after browser cleanup |
 | 2026-10-18 | `ev_0b6bf2a9bede95d91ecdd7be4af6a5be5564beaf38b1bcd0ad1d51db458c96b5` | REF-JOIN-01 attempted | `/` | REA declared fill/click scenario in a separate fresh browser | Submitting the previously displayed synthetic host code opened a “Sign In to Premium” modal; no guest room appeared | Code validity across temporary browser profiles was not established; no credentials entered; anonymous join and identity recovery remain unknown |
 | 2026-10-18 | `ev_22a5b34124c0482c7a28ea2bdc1d5bf402311fbb568aeb4efb4ed3b3fc89c3b4` | REF-PLAY-01 partial | `/host` | REA bounded search/add scenario | Adding a visible result moved it to a current singer surface with a YouTube iframe and host skip control | The capture does not prove video actually played, ended, or advanced; no TV authority or player-error state established |
+| 2026-10-20 | `ev_703e372df7ab63718e48be292ad8a2ec62a40361384d17b61c5c4d86555a72f6` | REF-PARTY-01 | `/host` | REA passive controlled browser capture | Fresh host surface exposed Sing/mic, fullscreen, Up Next, Scores, Search, an empty queue, room code, and QR | One fresh state only; rotation, duets, reactions, favorites, permissions, and themes were not visible, which does not prove they are absent elsewhere |
 
 ## Finding ledger
 
@@ -179,6 +182,7 @@ not the completeness of the application analysis.
 | F-06 | MyKaraoke decision | Free starts with 10 qualifying song credits; each explicitly accepted and verified Google rewarded ad grants 10 more; Premium removes MyKaraoke ads and provides unlimited MyKaraoke credits, without promising ad-free YouTube playback | Product brief, owner decision, and platform boundary | Product decision | Monetization is deferred until native N4 after the complete web MVP and requires provider-policy review, trusted reward verification, and independent tests |
 | F-07 | MyKaraoke decision | A host room is persisted for 24 hours and controlled by a private browser credential, never by its public code | F-02 and the bounded host-refresh UI observation establish only visible code/QR/recovery, not backend security | Product decision | Phase 3 implements independently tested persistence, invite destination, and host authorization |
 | F-08 | Observation | Host add can show a current singer, embedded YouTube frame, and skip control | Phase 6 REA search/add capture | High for visible controls; low for actual playback | MyKaraoke implements and tests designated-device playback independently |
+| F-09 | MyKaraoke decision | Browser-local song favorites are an independent Phase 9 feature; stored metadata is refreshed through the existing YouTube search boundary before queueing | REF-PARTY-01 did not expose a favorite interaction on the inspected state | Product decision | Do not copy an unobserved reference interaction; persist only versioned, bounded metadata and keep account sync out of this slice |
 
 Phase 3 reused the existing host-code, QR, and refresh evidence. No new REA
 capture was needed or claimed. The reference still does not establish its QR
@@ -207,6 +211,12 @@ ads served inside an embedded YouTube player. MyKaraoke therefore defines
 "no ads" as no MyKaraoke-owned display or rewarded ads. YouTube advertising,
 availability, and playback policy remain controlled by YouTube and are outside
 the Premium entitlement promise.
+
+Phase 9 began with a passive fresh-host control inventory. It supports only the
+listed visible controls and does not establish whether other party features
+exist in later room states. MyKaraoke therefore treats local favorites as an
+independent product decision and verifies its behavior against MyKaraoke's own
+storage and search boundaries.
 
 ## Design translation checklist
 
