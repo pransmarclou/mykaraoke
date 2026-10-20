@@ -83,7 +83,7 @@ them at the phase that first needs them.
 | Supabase project and credentials | Hosted integration | Active in ignored `.env.local`; hosted create/persist/authorized-close smoke test passed. Hosted migration history, backup ownership, credential rotation, and deployment secret configuration still require review |
 | YouTube API project/key and quota strategy | Song search | A key is configured in ignored local `.env.local` and live search passed; project ownership and hosted key/quota strategy remain open. Local 50 uncached searches/day and 30 requests/actor/day with 15-minute cache implemented |
 | Anonymous participant identity/session design | Guest joining | Resolved locally: per-browser random HttpOnly guest credential, SHA-256 digest in `room_members`, scoped to one active room |
-| Deployment Vercel project and environments | Launch readiness | Open |
+| Deployment Vercel project and environments | Launch readiness | Resolved for the MVP production environment: `nookstudio/mykaraoke` deploys `main` to the production aliases; preview-environment policy remains open |
 | Analytics and error-reporting provider | Observability | Open |
 | TURN provider and operating budget | Optional native N3 remote microphone | Open |
 | Physical device test inventory | Audio/compatibility | Open |
@@ -656,6 +656,41 @@ owner reviews the remaining Phase 7 and Phase 8 evidence.
   the room presence, queue, playback, and Realtime endpoints serving the live
   dashboard. The exact verification room was then marked closed in hosted
   PostgreSQL; reloading returned the browser to the new-room form.
+
+## Phase 7–8 acceptance-gate continuation — 2026-10-19
+
+- Added a durable, non-mutating production shell suite in
+  `playwright.production.config.ts`, run with
+  `npm run test:production:smoke`. It targets only `/`, `/host`, `/join`, and
+  the not-found route; it does not create or join rooms, mutate queues, start
+  playback, or touch database state.
+- Production shell results: all 25 checks that reached the application passed
+  across desktop Chromium, desktop WebKit, Pixel 7-sized Chromium, iPhone
+  15-sized WebKit, and a 1920x1080 Chromium viewport. Coverage includes entry
+  navigation, recovery navigation, horizontal overflow, WCAG A/AA automation,
+  brand asset loading, and theme tokens. The large Chromium viewport is not
+  evidence of compatibility with a physical smart-TV browser.
+- Firefox did not reach MyKaraoke. Playwright Firefox 157 exited before
+  navigation with `Could not find profile folder`; the same runner failure
+  repeated with one worker and with `TMPDIR=/tmp`. Record this as a local test
+  runtime blocker, not a MyKaraoke product failure or pass.
+- Typecheck and lint passed after adding the production configuration.
+- The environment has no `MYKARAOKE_TEST_DB_HOST`, and the authenticated
+  Supabase CLI account does not expose either the MVP project or a separate
+  MyKaraoke test project. The mutating host/two-guest/TV, reconnect, and network
+  loss suite therefore remains correctly blocked rather than running against
+  live MVP data.
+- macOS hardware inventory found the built-in MacBook Pro microphone and one
+  additional Apple microphone labelled `Prans Microphone`, both at 48 kHz.
+  Inventory is not a functional test: browser permission, capture, monitoring,
+  feedback, and latency were not exercised. No USB or Bluetooth microphone and
+  no Windows machine were detected in the available environment.
+- Remaining gate work: provision and exactly allowlist a separate hosted test
+  database; resolve or manually cover Firefox; run the real multi-context
+  mutation/reconnect journey there; and complete microphone permission,
+  monitoring-with-headphones, disconnect/recovery, feedback, and measured
+  latency checks on the named Mac/Windows, built-in, USB, and Bluetooth matrix.
+  Phase 7 and Phase 8 remain unaccepted, so Phase 9 has not started.
 
 ## Session handoff template
 

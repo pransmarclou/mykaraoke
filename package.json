@@ -11,6 +11,7 @@
     "test:unit": "tsx --test tests/unit/*.test.ts",
     "test:integration": "node --env-file=.env.local --import tsx scripts/run-database-tests.ts integration",
     "test:e2e": "node --env-file=.env.local --import tsx scripts/run-database-tests.ts e2e",
+    "test:production:smoke": "playwright test --config=playwright.production.config.ts",
     "cleanup:rooms": "node --env-file=.env.local --import tsx scripts/cleanup-rooms.ts"
   },
   "dependencies": {
