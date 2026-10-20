@@ -24,6 +24,8 @@ export function playbackApiError(error: unknown, context: string): NextResponse 
     const responses = {
       invalid: [400, "Invalid playback request."],
       forbidden: [403, "This display is not paired with the room."],
+      not_allowed: [403, "The host has not turned on remote control for guests."],
+      limited: [429, "Too many remote commands. Wait a minute and try again."],
       ended: [410, "This room has ended or expired."],
       empty: [409, "No song is ready for this action."],
       no_device: [409, "Pair a TV display before starting playback."],

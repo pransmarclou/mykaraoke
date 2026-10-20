@@ -894,6 +894,54 @@ test-project, browser/device, and audio-hardware matrices are completed.
   allowlisted hosted test project and run the combined reaction, rotation,
   duet, playback, and reconnection journeys before the theme or permission slice.
 
+## Phase 9 guest permissions and phone remote slice — 2026-10-20
+
+- Reference boundary: The owner asked to apply the reference's features and
+  named "the phone transforms into a remote". A signed-out built-in-browser
+  read (not REA; no REA tool was loaded) found only marketing copy for that
+  claim. No credentials were entered; the owner was told to sign in themselves
+  if authenticated states are needed. See F-14.
+- Completed: The host room has a Guest permissions panel with four switches:
+  add songs (existing `allow_guest_songs`), remote control, manage queue, and
+  reactions. With remote control on, a guest phone shows Start next song,
+  Pause/Resume, and Skip current for the paired TV. Queue and playback
+  snapshots carry the permissions, and changing one publishes a queue version
+  so connected phones update without reload.
+- Security/data: Every check runs inside the existing locked server
+  transaction (queue add/mutate, playback command, reaction send). Turning a
+  switch off removes the control and the server returns 403. Only the host can
+  PATCH `/api/rooms/[code]/settings/guest-permissions`. Guest remote commands
+  use the per-guest 12/minute queue mutation budget. Additive migration
+  `20261020050000_guest_permissions.sql` adds three boolean columns to the
+  RLS-protected, service-role-only `room_settings`.
+- Tests run: TypeScript, lint, unit 41/41, and the optimized production build
+  passed. `tests/integration/permissions.test.ts` and
+  `tests/e2e/permissions.spec.ts` are authored but not run: no separately
+  allowlisted hosted test project is configured.
+- Deployment boundary: The migration has not been applied anywhere and the
+  slice is uncommitted. Apply the migration to production before pushing the
+  code to `main`; the deployed code reads the new columns on every playback
+  and queue request (see the schema incident below).
+- Next exact action: Owner review; apply the migration to a test project and
+  run the two authored suites, then to production before deploying.
+
+## Phase 9 production schema incident — 2026-10-20
+
+- Symptom: Playback stopped working after commit `a3e3a28` reached
+  `origin/main`. The deployed code selected `queue_items.duet_singer_name` and
+  `room_settings.fair_rotation_enabled`, but the hosted MVP database
+  (`wvhnsbmipjbspunhpqmi`) had none of the Phase 9 migrations, so playback
+  state, queue reads, and queue adds failed with missing-column errors.
+- Resolution: The owner applied `20261020020000_reaction_limits.sql`,
+  `20261020030000_fair_rotation.sql`, and `20261020040000_duet_singers.sql` to
+  the hosted MVP database. Read-only checks confirmed both columns, the
+  `reaction_limits` table, and both duet constraints exist, and the playback and
+  queue select statements run without errors.
+- Lesson: Apply additive migrations to the hosted database before pushing
+  code that reads the new columns to `main`, which may deploy automatically.
+- Still open: The combined Phase 9 journeys have not run on a separately
+  allowlisted hosted test project, and manual browser and TV checks remain open.
+
 ## Session handoff template
 
 Append a short entry after future work sessions:

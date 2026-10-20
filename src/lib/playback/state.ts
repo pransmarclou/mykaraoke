@@ -3,6 +3,9 @@ import type { PoolClient } from "pg";
 import { getDb } from "@/lib/db";
 import { credentialDigest, newHostCredential, normalizeRoomCode } from "@/lib/rooms/room-code";
 import { commandReplayDecision, playerEventTransition, type PlayerEvent } from "@/lib/playback/rules";
+import { canUse, type GuestPermissions } from "@/lib/permissions/rules";
+import { readGuestPermissions } from "@/lib/permissions/state";
+import { QueueError, reserveQueueMutation } from "@/lib/songs/queue";
 
 const PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -18,9 +21,10 @@ export type PlaybackSnapshot = {
   next: PlaybackSong | null;
   devicePaired: boolean;
   tvConnected: boolean;
+  guestPermissions: GuestPermissions;
 };
 export class PlaybackError extends Error {
-  constructor(public readonly reason: "invalid" | "forbidden" | "ended" | "empty" | "no_device" | "current" | "pair_invalid" | "pair_limited") { super(reason); }
+  constructor(public readonly reason: "invalid" | "forbidden" | "not_allowed" | "limited" | "ended" | "empty" | "no_device" | "current" | "pair_invalid" | "pair_limited") { super(reason); }
 }
 
 type SongRow = { id: string; youtube_id: string; title: string; channel_title: string; singer_name: string; duet_singer_name: string | null; duration_seconds: number };
@@ -58,6 +62,7 @@ async function snapshot(client: PoolClient, roomId: string): Promise<PlaybackSna
     errorCode: state?.error_code ?? null, current: await currentSong(client, state?.current_item_id ?? null),
     next: await nextSong(client, roomId), devicePaired: Boolean(state?.device_hash),
     tvConnected: Boolean(state?.device_seen_at && Date.now() - state.device_seen_at.getTime() < 20_000),
+    guestPermissions: await readGuestPermissions(client, roomId),
   };
 }
 export async function playbackSnapshot(roomId: string): Promise<PlaybackSnapshot> {
@@ -155,12 +160,15 @@ async function cueNext(client: PoolClient, roomId: string): Promise<string | nul
 }
 
 export type HostPlaybackAction = "start" | "pause" | "resume" | "skip";
-export async function hostPlaybackCommand(roomId: string, action: HostPlaybackAction, requestKey: string): Promise<PlaybackSnapshot> {
+export type PlaybackActor = { role: "host" } | { role: "guest"; guestId: string };
+export async function hostPlaybackCommand(roomId: string, action: HostPlaybackAction, requestKey: string, actor: PlaybackActor = { role: "host" }): Promise<PlaybackSnapshot> {
   if (!UUID.test(requestKey)) throw new PlaybackError("invalid");
+  if (actor.role === "guest" && !UUID.test(actor.guestId)) throw new PlaybackError("invalid");
   const client = await getDb().connect();
   try {
     await client.query("begin");
     await lockOpenRoom(client, roomId);
+    if (!canUse(actor.role, await readGuestPermissions(client, roomId), "playbackControl")) throw new PlaybackError("not_allowed");
     await ensureState(client, roomId);
     const replay = await client.query<{ action: string }>("select action from public.playback_commands where room_id = $1 and request_key = $2", [roomId, requestKey]);
     const decision = commandReplayDecision(replay.rows[0]?.action, action);
@@ -169,6 +177,13 @@ export async function hostPlaybackCommand(roomId: string, action: HostPlaybackAc
       const value = await snapshot(client, roomId);
       await client.query("commit");
       return value;
+    }
+    if (actor.role === "guest") {
+      // Guest remotes share the per-guest queue mutation budget so one phone
+      // cannot spam skips at the TV.
+      await reserveQueueMutation(client, roomId, actor.guestId, 12).catch((error: unknown) => {
+        throw error instanceof QueueError && error.reason === "limited" ? new PlaybackError("limited") : error;
+      });
     }
     const state = (await stateForRoom(client, roomId))!;
     if (action === "start") {

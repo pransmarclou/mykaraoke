@@ -17,8 +17,13 @@
   dedicated hosted test project, then run the authored integration and
   host/guest/TV Playwright journeys. Apply all three migrations in order before any
   production code deployment; do not run those suites against live MVP data.
-- Continue Phase 9 after reaction/rotation/duet review with independently
-  testable standard-theme and server-enforced guest-permission slices.
+- Phase 9 guest-permission gate: apply `20261020050000_guest_permissions.sql`
+  to the dedicated hosted test project, run `tests/integration/permissions.test.ts`
+  and `tests/e2e/permissions.spec.ts`, then apply it to production before
+  deploying the code that reads the new columns.
+- Continue Phase 9 with the independently testable standard-theme slice.
+- Scores and leaderboard: owner-requested new scope; add it to
+  `Docs/build-phases.md` as its own slice before building.
 - Finish the cross-browser web MVP through Phase 10 before building the native
   app. Do not add a web paywall or mandatory app-install gate in that stage.
 - After the web gate, decide the native stack and account migration, then build

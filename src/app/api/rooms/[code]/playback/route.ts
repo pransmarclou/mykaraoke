@@ -21,9 +21,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     if (Number(request.headers.get("content-length") ?? 0) > 1_024) return NextResponse.json({ error: "Playback request is too large." }, { status: 413 });
     const { code } = await params;
     const access = await songRoomAccess(code);
-    if (access.role !== "host") return NextResponse.json({ error: "Only the host can control playback." }, { status: 403 });
     const body = await request.json().catch(() => null) as { action?: HostPlaybackAction; requestKey?: string } | null;
     if (!body?.action || !actions.has(body.action) || typeof body.requestKey !== "string") return NextResponse.json({ error: "Invalid playback command." }, { status: 400 });
-    return NextResponse.json(await hostPlaybackCommand(access.roomId, body.action, body.requestKey), { headers: { "Cache-Control": "no-store" } });
-  } catch (error) { return playbackApiError(error, "Host playback command failed"); }
+    if (access.role === "guest" && !access.guestId) return NextResponse.json({ error: "Invalid playback command." }, { status: 400 });
+    const actor = access.role === "host" ? { role: "host" as const } : { role: "guest" as const, guestId: access.guestId! };
+    return NextResponse.json(await hostPlaybackCommand(access.roomId, body.action, body.requestKey, actor), { headers: { "Cache-Control": "no-store" } });
+  } catch (error) { return playbackApiError(error, "Playback command failed"); }
 }

@@ -2,9 +2,10 @@ import type { PoolClient } from "pg";
 import { getDb } from "@/lib/db";
 import { displayLabel } from "@/lib/rooms/display-name";
 import type { RoomReactionEvent, RoomReactionId } from "@/lib/reactions/rules";
+import { readGuestPermissions } from "@/lib/permissions/state";
 
 export class ReactionError extends Error {
-  constructor(public readonly reason: "invalid" | "ended" | "empty" | "limited") {
+  constructor(public readonly reason: "invalid" | "ended" | "empty" | "limited" | "forbidden") {
     super(reason);
   }
 }
@@ -57,6 +58,7 @@ export async function sendRoomReaction(input: {
     );
     const room = roomResult.rows[0];
     if (!room) throw new ReactionError("ended");
+    if (input.role === "guest" && !(await readGuestPermissions(client, input.roomId)).reactions) throw new ReactionError("forbidden");
     if (!room.current_item_id) throw new ReactionError("empty");
 
     let sender = "Host";

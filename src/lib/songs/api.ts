@@ -48,6 +48,7 @@ export function songApiError(error: unknown, context: string) {
       limited: [429, "Too many queue changes. Wait a minute and try again."],
       missing: [404, "That queued song is no longer available."],
       ended: [410, "This room has ended or expired."],
+      forbidden: [403, "The host has not allowed guests to do that."],
     } as const;
     const [status, message] = responses[error.reason];
     return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });

@@ -371,7 +371,9 @@ UI labels all unverified or unsupported combinations accurately.
 to defer, not accept, the remaining Phase 7–8 verification. The first Phase 9
 slices implement browser-local song favorites, scoped rate-limited TV reactions,
 optional fair singer rotation with manual host override, and two-singer duet
-assignment across queue and playback surfaces. The Phase 9
+assignment across queue and playback surfaces, and host-configured guest
+permissions (add songs, phone remote control of the TV, queue management, and
+reactions) enforced at each server boundary. The Phase 9
 migrations and multi-context browser journeys still need the dedicated hosted
 test project; the other party features and combined acceptance gate remain open.
 

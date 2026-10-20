@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import { createClient, type SupabaseClient, type RealtimeChannel } from "@supabase/supabase-js";
-import { ArrowDown, ArrowUp, Heart, ListMusic, Music2, Search, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Heart, ListMusic, Music2, Search, ShieldCheck, Trash2 } from "lucide-react";
 import {
   favoriteFromSong,
   parseSongFavorites,
@@ -12,13 +12,14 @@ import {
   toggleSongFavorite,
   type FavoriteSong,
 } from "@/lib/songs/favorites";
+import { DEFAULT_GUEST_PERMISSIONS, GUEST_PERMISSIONS, type GuestPermission } from "@/lib/permissions/rules";
 import type { QueueSnapshot } from "@/lib/songs/queue";
 import { singerLabel } from "@/lib/songs/singers";
 import type { SongResult } from "@/lib/songs/youtube";
 import { youtubeThumbnailUrl } from "@/lib/songs/thumbnail";
 
 type SearchState = { status: "idle" | "loading" | "results" | "empty" | "error"; songs: SongResult[]; message?: string };
-const emptyQueue: QueueSnapshot = { version: 0, items: [], fairRotation: false };
+const emptyQueue: QueueSnapshot = { version: 0, items: [], fairRotation: false, guestPermissions: DEFAULT_GUEST_PERMISSIONS };
 const favoritesChangedEvent = "mykaraoke:favorites-changed";
 
 function favoriteStorageSnapshot(): string | null {
@@ -62,6 +63,8 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
   const [workingId, setWorkingId] = useState<string | null>(null);
   const pendingAdds = useRef(new Map<string, string>());
   const canAssignSingers = singerName.trim().length >= 2 && (!duetEnabled || duetSingerName.trim().length >= 2);
+  const canAddSongs = role === "host" || queue.guestPermissions.addSongs;
+  const canManageQueue = role === "host" || queue.guestPermissions.queueControl;
 
   useEffect(() => {
     let active = true;
@@ -240,19 +243,44 @@ export function RoomSongQueue({ code, role, singer }: { code: string; role: "hos
     }
   }
 
+  async function toggleGuestPermission(permission: GuestPermission) {
+    if (role !== "host" || queueState !== "connected" || workingId !== null) return;
+    const enabled = !queue.guestPermissions[permission];
+    const label = GUEST_PERMISSIONS.find((item) => item.id === permission)?.label ?? "Permission";
+    setWorkingId(`permission:${permission}`);
+    setQueueMessage("");
+    try {
+      const response = await fetch(`/api/rooms/${code}/settings/guest-permissions`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [permission]: enabled }),
+      });
+      if (!response.ok) { setQueueMessage(await responseError(response)); return; }
+      const { guestPermissions } = await response.json() as Pick<QueueSnapshot, "guestPermissions">;
+      setQueue((current) => ({ ...current, guestPermissions }));
+      setQueueMessage(`${label} for guests is ${enabled ? "on" : "off"}.`);
+    } catch {
+      setQueueMessage("Could not update guest permissions. Check your connection and retry.");
+    } finally {
+      setWorkingId(null);
+    }
+  }
+
   return <section className="feature-panel rounded-[1.75rem] p-6 sm:p-8" aria-labelledby="song-queue-title">
     <div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/15 text-[#ffad69]"><ListMusic className="size-5" aria-hidden="true" /></span><div><h2 id="song-queue-title" className="text-xl font-black tracking-tight">Up next</h2><p className="text-sm text-muted-foreground">Shared order for everyone in this room</p></div></div>
     {queueState === "connected" ? <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div><p className="text-sm font-bold text-white">Fair singer rotation</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Alternates waiting singers while keeping each singer&apos;s songs in request order.</p></div>{role === "host" ? <button type="button" aria-label={queue.fairRotation ? "Turn fair singer rotation off" : "Turn fair singer rotation on"} aria-pressed={queue.fairRotation} disabled={workingId !== null} onClick={() => void toggleFairRotation()} className={`queue-action min-h-11 ${queue.fairRotation ? "border-[#ff6e8f]/60 bg-[#d92362]/25" : ""}`}>{workingId === "rotation" ? "Saving…" : queue.fairRotation ? "On" : "Off"}</button> : <span className={`rounded-full px-3 py-1 text-xs font-bold ${queue.fairRotation ? "bg-[#d92362]/25 text-[#ffb0c3]" : "bg-white/5 text-muted-foreground"}`}>{queue.fairRotation ? "On" : "Off"}</span>}</div> : null}
+    {queueState === "connected" && role === "host" ? <fieldset className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4" data-testid="guest-permissions"><legend className="flex items-center gap-2 px-1 text-sm font-bold text-white"><ShieldCheck className="size-4 text-[#ffc16f]" aria-hidden="true" />Guest permissions</legend><p className="text-xs leading-5 text-muted-foreground">Choose what guest phones can do. Turning one off removes the control and the server rejects it.</p><ul className="mt-3 space-y-2">{GUEST_PERMISSIONS.map((permission) => { const on = queue.guestPermissions[permission.id]; return <li key={permission.id} className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-white">{permission.label}</p><p className="text-xs text-muted-foreground">{permission.description}</p></div><button type="button" role="switch" aria-checked={on} aria-label={`Guest ${permission.label.toLowerCase()}`} disabled={workingId !== null} onClick={() => void toggleGuestPermission(permission.id)} className={`queue-action min-h-11 ${on ? "border-[#ff6e8f]/60 bg-[#d92362]/25" : ""}`}>{workingId === `permission:${permission.id}` ? "Saving…" : on ? "On" : "Off"}</button></li>; })}</ul></fieldset> : null}
     {queueState === "loading" ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading queue…</p> : null}
     {queueState === "reconnecting" ? <p role="status" className="mt-5 text-sm text-[#ffc16f]">Queue connection interrupted. Reconnecting…</p> : null}
     {queueState === "ended" ? <p role="alert" className="mt-5 text-sm text-[#ffb0a2]">This room ended or your access expired.</p> : null}
     {queueState === "connected" && queue.items.length === 0 ? <p className="mt-5 text-sm text-muted-foreground">No songs yet. Search for a karaoke video and add the first one.</p> : null}
     <ol className="mt-5 space-y-3" data-testid="queue-list">{queueState !== "ended" ? queue.items.map((item, index) => <li key={item.id} data-testid="queue-item" className="rounded-xl border border-white/10 bg-white/5 p-4">
       <div className="flex items-center gap-3"><span className="font-mono text-sm font-bold text-[#ffc16f]">{index + 1}.</span><SongThumbnail youtubeId={item.youtubeId} /><div className="min-w-0 flex-1"><p className="font-semibold text-white">{item.title}</p><p className="mt-1 text-sm text-muted-foreground">{singerLabel(item)} · {item.channelTitle} · {duration(item.durationSeconds)}</p></div></div>
-      {role === "host" ? <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3"><button type="button" aria-label={`Move ${item.title} up`} disabled={index === 0 || workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "up")} className="queue-action"><ArrowUp className="size-4" aria-hidden="true" /> Up</button><button type="button" aria-label={`Move ${item.title} down`} disabled={index === queue.items.length - 1 || workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "down")} className="queue-action"><ArrowDown className="size-4" aria-hidden="true" /> Down</button><button type="button" aria-label={`Skip ${item.title}`} disabled={workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "skip")} className="queue-action">Skip</button><button type="button" aria-label={`Remove ${item.title}`} disabled={workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "remove")} className="queue-action"><Trash2 className="size-4" aria-hidden="true" /> Remove</button></div> : null}
+      {canManageQueue ? <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3"><button type="button" aria-label={`Move ${item.title} up`} disabled={index === 0 || workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "up")} className="queue-action"><ArrowUp className="size-4" aria-hidden="true" /> Up</button><button type="button" aria-label={`Move ${item.title} down`} disabled={index === queue.items.length - 1 || workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "down")} className="queue-action"><ArrowDown className="size-4" aria-hidden="true" /> Down</button><button type="button" aria-label={`Skip ${item.title}`} disabled={workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "skip")} className="queue-action">Skip</button><button type="button" aria-label={`Remove ${item.title}`} disabled={workingId !== null || queueState !== "connected"} onClick={() => void change(item.id, "remove")} className="queue-action"><Trash2 className="size-4" aria-hidden="true" /> Remove</button></div> : null}
     </li>) : null}</ol>
     {queueMessage ? <p role="status" className="mt-4 text-sm text-[#ffc16f]">{queueMessage}</p> : null}
-    {queueState !== "ended" ? <div className="mt-8 border-t border-white/10 pt-7"><div className="flex items-center gap-2"><Search className="size-5 text-[#ffc16f]" aria-hidden="true" /><h3 className="text-lg font-bold">Find a karaoke song</h3></div><p className="mt-2 text-sm leading-6 text-muted-foreground">Searches YouTube for videos that report they support embedding. Playback availability is checked again when the host starts a song.</p>
+    {queueState === "connected" && !canAddSongs ? <p role="status" className="mt-8 border-t border-white/10 pt-7 text-sm text-muted-foreground">The host has paused song requests from guests. You can still follow the queue here.</p> : null}
+    {queueState !== "ended" && canAddSongs ? <div className="mt-8 border-t border-white/10 pt-7"><div className="flex items-center gap-2"><Search className="size-5 text-[#ffc16f]" aria-hidden="true" /><h3 className="text-lg font-bold">Find a karaoke song</h3></div><p className="mt-2 text-sm leading-6 text-muted-foreground">Searches YouTube for videos that report they support embedding. Playback availability is checked again when the host starts a song.</p>
       <label htmlFor={`singer-${role}`} className="mt-5 block text-sm font-semibold">Singer name</label><input id={`singer-${role}`} value={singerName} onChange={(event) => setSingerName(event.target.value)} maxLength={24} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white" />
       <label htmlFor={`duet-${role}`} className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold"><input id={`duet-${role}`} type="checkbox" checked={duetEnabled} onChange={(event) => { setDuetEnabled(event.target.checked); if (!event.target.checked) setDuetSingerName(""); }} className="size-4 accent-[#d92362]" />Add a duet partner</label>
       {duetEnabled ? <div><label htmlFor={`duet-singer-${role}`} className="mt-4 block text-sm font-semibold">Duet partner name</label><input id={`duet-singer-${role}`} value={duetSingerName} onChange={(event) => setDuetSingerName(event.target.value)} maxLength={24} aria-describedby={`duet-help-${role}`} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white" /><p id={`duet-help-${role}`} className="mt-2 text-xs text-muted-foreground">Choose a different person. Both singers share one turn in fair rotation.</p></div> : null}

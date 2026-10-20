@@ -1,5 +1,7 @@
 import type { PoolClient } from "pg";
 import { getDb } from "@/lib/db";
+import { canUse, type GuestPermissions } from "@/lib/permissions/rules";
+import { readGuestPermissions } from "@/lib/permissions/state";
 import { fairSingerOrder } from "@/lib/songs/rotation";
 import { normalizeSingerAssignment, type SingerAssignment } from "@/lib/songs/singers";
 
@@ -14,9 +16,9 @@ export type QueueItem = {
   requestedBy: string | null;
   position: number;
 };
-export type QueueSnapshot = { version: number; items: QueueItem[]; fairRotation: boolean };
+export type QueueSnapshot = { version: number; items: QueueItem[]; fairRotation: boolean; guestPermissions: GuestPermissions };
 export class QueueError extends Error {
-  constructor(public readonly reason: "invalid" | "stale" | "duplicate" | "limit" | "limited" | "missing" | "ended") { super(reason); }
+  constructor(public readonly reason: "invalid" | "stale" | "duplicate" | "limit" | "limited" | "missing" | "ended" | "forbidden") { super(reason); }
 }
 
 type Row = { id: string; youtube_id: string; title: string; channel_title: string; duration_seconds: number; singer_name: string; duet_singer_name: string | null; requested_by: string | null; position: number };
@@ -86,6 +88,7 @@ async function snapshot(client: PoolClient, roomId: string): Promise<QueueSnapsh
     version: Number(room.rows[0]?.queue_version ?? 0),
     items: (await rowsForRoom(client, roomId)).map(toItem),
     fairRotation: await fairRotationEnabled(client, roomId),
+    guestPermissions: await readGuestPermissions(client, roomId),
   };
 }
 async function publish(client: PoolClient, roomId: string): Promise<number> {
@@ -131,6 +134,7 @@ export async function addQueueItem(input: { roomId: string; role: "host" | "gues
   try {
     await client.query("begin");
     await lockRoom(client, input.roomId);
+    if (!canUse(input.role, await readGuestPermissions(client, input.roomId), "addSongs")) throw new QueueError("forbidden");
     const replay = await client.query("select 1 from public.queue_items where room_id = $1 and actor_key = $2 and request_key = $3", [input.roomId, actorKey, input.requestKey]);
     if (replay.rows[0]) {
       const value = await snapshot(client, input.roomId);
@@ -165,16 +169,20 @@ export async function addQueueItem(input: { roomId: string; role: "host" | "gues
   } finally { client.release(); }
 }
 
-export async function mutateQueue(input: { roomId: string; id: string; action: "remove" | "skip" | "up" | "down"; expectedVersion: number }): Promise<QueueSnapshot> {
+export async function mutateQueue(input: { roomId: string; role?: "host" | "guest"; guestId?: string; id: string; action: "remove" | "skip" | "up" | "down"; expectedVersion: number }): Promise<QueueSnapshot> {
+  const role = input.role ?? "host";
+  const actorKey = role === "host" ? "host" : input.guestId;
+  if (!actorKey) throw new QueueError("invalid");
   if (!UUID.test(input.id) || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 0) throw new QueueError("invalid");
   const client = await getDb().connect();
   try {
     await client.query("begin");
     const version = await lockRoom(client, input.roomId);
+    if (!canUse(role, await readGuestPermissions(client, input.roomId), "queueControl")) throw new QueueError("forbidden");
     if (version !== input.expectedVersion) throw new QueueError("stale");
     const rows = await rowsForRoom(client, input.roomId);
     if (!rows.some((row) => row.id === input.id)) throw new QueueError("missing");
-    await reserveQueueMutation(client, input.roomId, "host", 40);
+    await reserveQueueMutation(client, input.roomId, actorKey, role === "guest" ? 12 : 40);
     if (input.action === "remove" || input.action === "skip") {
       await client.query("update public.queue_items set status = $3, position = null, updated_at = now() where room_id = $1 and id = $2", [input.roomId, input.id, input.action === "skip" ? "skipped" : "removed"]);
     } else {
