@@ -746,10 +746,18 @@ the owner reviews the remaining Phase 7 and Phase 8 evidence.
   counts only; they omit room codes, credentials, database URLs, and error
   messages.
 - Verification: cleanup policy and unauthorized-route coverage passed as part
-  of 28/28 unit tests; lint, typecheck, optimized Next.js build, and diff checks passed. The
-  build identifies the cleanup route as a dynamic Node.js function. No manual
-  authorized cleanup request or database-mutating suite ran against live MVP
-  data. Confirm the first natural scheduled invocation in Vercel runtime logs.
+  of 28/28 unit tests; lint, typecheck, optimized Next.js build, and diff checks
+  passed. The build identifies the cleanup route as a dynamic Node.js function.
+  No manual authorized cleanup request or database-mutating suite ran against
+  live MVP data. Confirm the first natural scheduled invocation in Vercel
+  runtime logs.
+- Production deployment `dpl_Fr9LZzaGTT3YXSaVRBVhDsxp77Fu` reached `Ready`
+  and received the public aliases. Vercel project metadata lists the cleanup
+  definition on that deployment at `/api/internal/rooms/cleanup` with schedule
+  `0 7 * * *`. A live request without the secret returned 401 with
+  `Cache-Control: no-store`; its runtime log contained only
+  `room_cleanup_rejected` and `unauthorized`. This verified the protected
+  boundary and structured logging without executing cleanup.
 - Phase 7 and Phase 8 remain verification-pending for the previously recorded
   hosted test database, browser/device, and audio-hardware gates. Phase 9 has
   not started.
