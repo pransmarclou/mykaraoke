@@ -327,9 +327,13 @@ full multi-device journey passes without fake or manually edited state.
 
 ## Phase 8 — Local Microphone Studio
 
-**Status (2026-10-19): Implemented; real hardware verification pending.** The
-software slice and mocked desktop/mobile browser recovery checks pass. The
-acceptance gate remains open until the stated physical-device matrix is run.
+**Status (2026-10-20): Implemented; real hardware verification partially
+complete.** The software slice and mocked desktop/mobile browser recovery
+checks pass. Real Safari has now verified built-in Mac capture plus USB EarPods
+input discovery, switching, activity, mute, and a bounded 9% wired-headphone
+monitoring state; the owner confirmed that the monitor was audible. The
+acceptance gate remains open for separate latency characterization, disconnect
+recovery, Windows, and available Bluetooth coverage.
 
 ### User-facing outcome
 
@@ -367,15 +371,22 @@ UI labels all unverified or unsupported combinations accurately.
 
 ## Phase 9 — Singer and party experience
 
-**Status (2026-10-20): In build by explicit owner exception.** The owner chose
+**Status (2026-10-20): Implemented, verification pending.** The owner chose
 to defer, not accept, the remaining Phase 7–8 verification. The first Phase 9
 slices implement browser-local song favorites, scoped rate-limited TV reactions,
 optional fair singer rotation with manual host override, and two-singer duet
 assignment across queue and playback surfaces, and host-configured guest
 permissions (add songs, phone remote control of the TV, queue management, and
-reactions) enforced at each server boundary. The Phase 9
-migrations and multi-context browser journeys still need the dedicated hosted
-test project; the other party features and combined acceptance gate remain open.
+reactions) enforced at each server boundary. Audience ratings and a room-only
+live leaderboard are also implemented, including a separate guest-rating
+permission. Three accessible design-token themes are implemented with fixed
+allowlisted IDs: personal selection persists outside rooms, while the host's
+room choice synchronizes through queue/playback snapshots to guests and the
+paired TV. The hosted MVP now exposes the expected rating and party-theme
+schema, but migration history still needs reconciliation. The Phase 9
+integration and multi-context browser journeys still need the dedicated hosted
+test project, and the combined acceptance gate remains open. The owner directed
+Phase 10 to begin while this evidence remains explicitly deferred.
 
 ### User-facing outcome
 
@@ -391,15 +402,24 @@ MVP lifecycle.
 - Add standard party themes based on design tokens.
 - Add local favorites first, then optional account sync behind a clear boundary.
 - Add configurable guest permissions enforced on the server.
+- Add audience performance ratings and a live room leaderboard (owner request,
+  2026-10-20): each host or guest rates the current or just-finished song once
+  (1–5 stars, changeable), ratings group by performer, the TV shows the top
+  performers, reactions do not affect scores, and a host switch can turn guest
+  rating off.
 - Improve reconnect handling for the new state.
 
 ### Tests and verification
 
-- Unit: rotation fairness, duet assignment, reaction throttle, permissions.
+- Unit: rotation fairness, duet assignment, reaction throttle, permissions,
+  rating validation, and leaderboard ordering.
 - Integration: concurrent singer changes, favorites ownership, reaction abuse
-  limits, and server-enforced guest restrictions.
-- Playwright multi-context party scenario including duet and reactions.
+  limits, room-scoped ratings, and server-enforced guest restrictions.
+- Playwright multi-context party scenario including duet, reactions, ratings,
+  phone remote, and the TV leaderboard.
 - Accessibility checks for all themes, reduced motion, and TV contrast.
+- Verify a host theme change reaches a guest and paired TV, survives their
+  reloads, and cannot be changed by a guest.
 
 ### Acceptance gate
 
@@ -409,6 +429,15 @@ disabling a feature removes both its UI affordance and mutation permission.
 ---
 
 ## Phase 10 — Cross-browser web MVP, compatibility, and launch
+
+**Status (2026-10-20): In build by explicit owner direction.** The first slice
+adds a public browser capability check and a dated, truthful tested-versus-open
+device evidence ledger. It does not request media permission or treat API
+presence as proof of hardware compatibility. A second slice adds verified
+application-wide security/privacy response headers and records a zero-finding
+runtime dependency audit. A TV usability slice adds branded pairing/waiting
+states, a singer-ready countdown, and directional remote focus; CSP and the
+named device matrix remain open.
 
 ### User-facing outcome
 
@@ -656,9 +685,9 @@ Update this table only with evidence, never optimism.
 | 5 | ACCEPTED | Unit 11/11 after thumbnail refinement, integration 13/13, Playwright 18/18 and static/schema checks passed 2026-10-18 | Live local YouTube search and loaded thumbnails checked; no live playback claim | Owner asked to proceed to Phase 6, 2026-10-18 |
 | 6 | ACCEPTED | Unit 15/15, integration 16/16, Playwright 20/20 and static/schema checks passed 2026-10-18 | Official sample played in desktop Chromium; two karaoke embeds failed; physical TV untested | Owner asked to continue, 2026-10-19 |
 | 7 | IMPLEMENTED, VERIFICATION PENDING | Unit 15/15, integration 18/18, lint/typecheck/DB lint, production build, isolated desktop/mobile four-session journeys, hosted create/persist/authorized-close smoke, and 25 non-mutating production shell checks passed 2026-10-19; Firefox is blocked before navigation by the documented macOS 27 runner issue | Production HTTPS is Ready and real Safari host/reload checks passed; separate hosted test project, Firefox coverage, physical phone, and TV-browser checks remain | Owner review pending |
-| 8 | IMPLEMENTED, VERIFICATION PENDING | Unit 19/19, lint/typecheck/build, and focused desktop/mobile microphone recovery journeys passed | Real Safari verified MacBook Pro microphone selection, input activity, and mute with monitoring off; Windows, USB, Bluetooth, safe monitoring, feedback, disconnect/recovery, and measured latency checks remain | Owner review pending |
-| 9 | IN BUILD | Favorites, reaction payload, fair-rotation, and duet assignment rules pass in the unit suite; reaction/rotation/duet integration and multi-context tests are authored but not run without the allowlisted hosted test project | Browser interaction and physical TV verification remain open | Owner authorized Phase 9 start while deferring Phase 7–8 checks, 2026-10-20 |
-| 10 | NOT STARTED | — | — | — |
+| 8 | IMPLEMENTED, VERIFICATION PENDING | Unit 19/19, lint/typecheck/build, and focused desktop/mobile microphone recovery journeys passed | Real Safari verified MacBook Pro and USB EarPods input selection, switching, activity, mute, and an owner-confirmed audible five-second 9% monitor state routed to EarPods; separate latency characterization, disconnect/recovery, Windows, and Bluetooth checks remain | Owner review pending |
+| 9 | IMPLEMENTED, VERIFICATION PENDING | 48 unit checks cover favorites, reactions, rotation, duets, guest permissions, ratings/leaderboard, and theme rules; 12 focused desktop/mobile shell checks cover personal theme persistence, responsive layout, and WCAG A/AA; room-theme integration and host/guest/TV tests are authored but blocked without the allowlisted hosted test project | All three themes visually reviewed; hosted schema columns confirmed read-only; combined browser interaction, migration-history reconciliation, and physical TV verification remain open | Owner directed the next phase while deferring the combined gate, 2026-10-20 |
+| 10 | IN BUILD | TypeScript, lint, 54/54 unit checks, optimized build, and 18/18 focused desktop/mobile Chromium shell checks pass; readiness, TV remote focus, WCAG A/AA, overflow, and response-header checks are covered; runtime dependency audit has zero findings | Narrow-viewport and public TV-pairing visual passes completed; optimized HTTP response verified directly; paired countdown/remote journey is authored but awaits the dedicated test project; physical matrix, CSP, hosted smoke, and dev-only dependency advisory remain open | Owner directed next phase, 2026-10-20 |
 | N1 | NOT STARTED | — | — | — |
 | N2 | NOT STARTED | — | — | — |
 | N3 | NOT STARTED | — | — | — |

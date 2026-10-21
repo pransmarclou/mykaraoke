@@ -3,6 +3,7 @@ export type GuestPermissions = {
   queueControl: boolean;
   playbackControl: boolean;
   reactions: boolean;
+  ratings: boolean;
 };
 export type GuestPermission = keyof GuestPermissions;
 
@@ -11,6 +12,7 @@ export const GUEST_PERMISSIONS: readonly { id: GuestPermission; label: string; d
   { id: "playbackControl", label: "Remote control", description: "Guest phones can start, pause, resume, and skip on the TV." },
   { id: "queueControl", label: "Manage queue", description: "Guests can move, skip, and remove waiting songs." },
   { id: "reactions", label: "Reactions", description: "Guests can cheer the singer on the TV." },
+  { id: "ratings", label: "Rate performances", description: "Guests can rate each song for the leaderboard." },
 ];
 
 // Preserves the behavior rooms had before permissions were configurable.
@@ -19,6 +21,7 @@ export const DEFAULT_GUEST_PERMISSIONS: GuestPermissions = {
   queueControl: false,
   playbackControl: false,
   reactions: true,
+  ratings: true,
 };
 
 export function canUse(role: "host" | "guest", permissions: GuestPermissions, permission: GuestPermission): boolean {

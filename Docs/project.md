@@ -2,11 +2,19 @@
 
 ## Implementation status
 
-As of 2026-10-20, Phase 9 is in build with browser-local song favorites,
-ephemeral TV reactions, fair singer rotation, and duet singer assignment as
-implemented slices. The
-owner explicitly deferred, but did not accept, the
-remaining Phase 7 and Phase 8 verification. The production HTTPS deployment is
+As of 2026-10-20, Phase 10 is in build. Phase 9 browser-local song favorites,
+ephemeral TV reactions, fair singer rotation, duet singer assignment, guest
+permissions/phone remote, and audience ratings with a live leaderboard as
+implemented slices. Three accessible themes now apply the owner-brand Stage
+Glow palette or Electric Blue and Velvet Gold alternatives. Personal choice
+persists outside a room; the host's room choice synchronizes to connected host,
+guest, and paired TV surfaces through server snapshots. The
+owner explicitly deferred, but did not accept, the remaining Phase 7 through
+Phase 9 verification. A public compatibility page now checks browser API
+presence without asking for device permissions and separates that detection
+from the named real-device evidence still required. Application-wide security
+and privacy response headers are implemented without disabling same-origin
+microphone capture; nonce-based CSP work remains open. The production HTTPS deployment is
 live; Phase 7's broad browser and real-device gate remains open. A
 host can create a 24-hour room and invite guests. Guests can join, search
 server-verified YouTube metadata when an API key is configured, assign a singer,
@@ -26,7 +34,11 @@ the current browser and refresh YouTube availability before adding a favorite
 later. While a singer is on stage, hosts and guests can send one of four fixed,
 server-rate-limited reactions that is broadcast ephemerally to the paired TV
 and removed after a brief accessible animation. Reactions are not stored and
-do not affect a score. Favorites do not sync to an account. Accounts and
+do not affect scores. Hosts and guests can independently give the live or
+just-finished performance 1–5 stars; a room-only leaderboard groups ratings by
+performer and is visible on the paired TV. The host can separately control
+guest song additions, queue actions, reactions, ratings, and phone remote
+commands. Favorites do not sync to an account. Accounts and
 payments are not implemented. See `memory.md` for verification and
 `build-phases.md` for the next gate.
 
@@ -98,9 +110,11 @@ reacts. An optional account can later synchronize favorites and preferences.
 ### TV or playback device
 
 Runs a low-distraction fullscreen experience with the YouTube player, current
-singer, next singer, playback-recovery prompts, and brief party reactions. It
-shares room state but does not use mobile navigation or implicitly receive host
-authority.
+singer, a short singer-ready countdown, next singer, playback-recovery prompts,
+and brief party reactions. Arrow keys move between the small set of display
+actions, Enter selects, and Back exits fullscreen where the browser reports the
+key. It shares room state but does not use mobile navigation or implicitly
+receive host authority.
 
 ### Later native app
 
@@ -186,6 +200,7 @@ The planned normalized model includes:
 - `song_favorites`
 - `playback_state`
 - `room_settings`
+- `performance_ratings`
 - `microphone_sessions`
 - `room_events`
 - `song_credit_ledger` (future N4)
@@ -210,6 +225,13 @@ Its fair-rotation flag lives in the existing server-only `room_settings` row;
 queue versions and private Realtime invalidations distribute every change.
 The optional `queue_items.duet_singer_name` column keeps duet assignment in the
 same protected, transactional queue record as the primary singer.
+Phase 9 also extends `room_settings` with guest-control and rating flags.
+`performance_ratings` stores one server-written 1–5 star rating per actor and
+queue item; records are deleted with their temporary room and have no browser
+database grant. The app derives the leaderboard from these room-scoped rows.
+The checked `room_settings.party_theme` value is host-controlled and travels in
+authenticated queue and playback snapshots; arbitrary colors or CSS are not
+stored.
 
 ## UI and brand direction
 

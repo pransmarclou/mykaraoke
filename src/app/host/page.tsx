@@ -6,9 +6,11 @@ import QRCode from "qrcode";
 import { ArrowLeft, Clock3, LockKeyhole, QrCode } from "lucide-react";
 import { HostCreateForm } from "@/components/host-create-form";
 import { HostRoomActions } from "@/components/host-room-actions";
+import { HostRoomConsole } from "@/components/host-room-console";
 import { RoomParticipants } from "@/components/room-participants";
 import { RoomSongQueue } from "@/components/room-song-queue";
 import { PlaybackDashboard } from "@/components/playback-dashboard";
+import { RoomScores } from "@/components/room-scores";
 import { MicrophoneStudio } from "@/components/microphone-studio";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -34,33 +36,53 @@ async function ActiveRoom({ room }: { room: HostRoom }) {
   });
 
   return (
-    <div className="grid w-full items-start gap-10 md:grid-cols-[1.15fr_0.85fr] md:gap-14">
-      <div>
-        <p className="eyebrow">Host room created</p>
-        <h1 className="mt-6 text-[clamp(3rem,6vw,5.7rem)] leading-[0.98] font-black tracking-[-0.07em]">Your code is ready.</h1>
-        <p className="mt-6 max-w-xl text-lg leading-8 text-[#c9bec3]">Your host session is saved in this browser. Keep this tab or return here after a refresh to see your room again.</p>
-
-        <div className="feature-panel mt-8 max-w-2xl rounded-[1.75rem] p-6 sm:p-8">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffc16f]">Room code</p>
-          <p data-testid="room-code" className="mt-2 break-all font-mono text-[clamp(2.5rem,7vw,5rem)] leading-none font-black tracking-[0.1em] text-white">{room.code}</p>
-          <label htmlFor="invite-link" className="mt-7 block text-sm font-bold text-white">Invite link</label>
-          <input id="invite-link" type="url" readOnly value={joinUrl} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-sm text-white" />
-          <HostRoomActions code={room.code} joinUrl={joinUrl} />
-          <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4 text-[#ffb65a]" aria-hidden="true" />This room expires <time dateTime={room.expiresAt.toISOString()}>{room.expiresAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Chicago" })} CT</time>.</p>
+    <div className="w-full">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="eyebrow">Host control room</p>
+          <h1 className="mt-4 text-[clamp(2.7rem,5vw,5rem)] leading-[0.96] font-black tracking-[-0.065em]">The stage is ready.</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-[#c9bec3]">Keep the party moving from one focused workspace. Guests join with the code or QR while the paired screen handles playback.</p>
         </div>
-        <p className="mt-5 max-w-xl text-sm leading-6 text-muted-foreground">Guests can now open the link or QR, choose a display name, and join this room.</p>
-        <div className="mt-8 max-w-2xl"><MicrophoneStudio /></div>
-        <div className="mt-8 max-w-2xl"><PlaybackDashboard code={room.code} role="host" tvUrl={`${configuredAppOrigin()}/tv/${room.code}`} /></div>
-        <div className="mt-8 max-w-2xl"><RoomSongQueue code={room.code} role="host" singer="Host" /></div>
-        <div className="mt-8 max-w-2xl"><RoomParticipants code={room.code} /></div>
-        {localInvite ? <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">This localhost invite is a same-computer preview; a phone needs a deployed HTTPS address.</p> : null}
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffc16f]">Room code</p>
+          <p data-testid="room-code" className="mt-1 font-mono text-3xl leading-none font-black tracking-[0.14em] text-white">{room.code}</p>
+        </div>
       </div>
 
-      <div className="entry-illustration flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <div className="relative z-10 rounded-2xl bg-[#fff2e5] p-3 shadow-[0_18px_55px_rgba(0,0,0,.3)]">
-          <Image src={qrDataUrl} alt={`QR code for room ${room.code} invite link`} width={256} height={256} unoptimized className="size-52 rounded-lg sm:size-56" />
+      <div className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(22rem,0.75fr)]">
+        <div className="min-w-0 space-y-6">
+          <section className="entry-illustration flex min-h-[30rem] flex-col items-center justify-center gap-5 p-7 text-center" aria-labelledby="invite-stage-title">
+            <Image src="/brand/mykaraoke-wordmark.png" alt="" width={2172} height={724} className="relative z-10 h-auto w-full max-w-xs object-contain" priority />
+            <div className="relative z-10 rounded-2xl bg-[#fff2e5] p-3 shadow-[0_18px_55px_rgba(0,0,0,.3)]">
+              <Image src={qrDataUrl} alt={`QR code for room ${room.code} invite link`} width={256} height={256} unoptimized className="size-44 rounded-lg sm:size-52" />
+            </div>
+            <div className="relative z-10">
+              <h2 id="invite-stage-title" className="text-2xl font-black tracking-tight">Bring the singers in</h2>
+              <p className="mt-2 flex items-center justify-center gap-2 text-sm font-bold text-[#ffe4cd]"><QrCode className="size-4" aria-hidden="true" />Scan or enter {room.code}</p>
+            </div>
+          </section>
+
+          <PlaybackDashboard code={room.code} role="host" tvUrl={`${configuredAppOrigin()}/tv/${room.code}`} />
         </div>
-        <p className="relative z-10 flex items-center gap-2 text-sm font-bold text-[#ffe4cd]"><QrCode className="size-4" aria-hidden="true" />Scan to open the join page</p>
+
+        <div className="min-w-0">
+          <div className="feature-panel rounded-[1.5rem] p-5 sm:p-6">
+            <label htmlFor="invite-link" className="block text-sm font-bold text-white">Invite link</label>
+            <input id="invite-link" type="url" readOnly value={joinUrl} className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-sm text-white" />
+            <HostRoomActions code={room.code} joinUrl={joinUrl} />
+            <p className="mt-5 flex items-start gap-2 text-sm leading-6 text-muted-foreground"><Clock3 className="mt-1 size-4 shrink-0 text-[#ffb65a]" aria-hidden="true" />This room expires <time dateTime={room.expiresAt.toISOString()}>{room.expiresAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Chicago" })} CT.</time></p>
+            {localInvite ? <p className="mt-2 text-sm leading-6 text-muted-foreground">This localhost invite is a same-computer preview; a phone needs a deployed HTTPS address.</p> : null}
+          </div>
+
+          <div className="mt-6">
+            <HostRoomConsole
+              queue={<RoomSongQueue code={room.code} role="host" singer="Host" />}
+              scores={<RoomScores code={room.code} />}
+              studio={<MicrophoneStudio />}
+              people={<RoomParticipants code={room.code} />}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -82,7 +104,7 @@ export default async function HostPage() {
 
   return (
     <div className="page-shell flex min-h-screen flex-col">
-      <SiteHeader />
+      <SiteHeader showThemePicker={!room} />
       <main className="content-wrap flex flex-1 items-center py-14 md:py-20">
         {room ? <ActiveRoom room={room} /> : (
           <div className="grid w-full items-center gap-12 md:grid-cols-[1.05fr_0.95fr] md:gap-16">

@@ -4,6 +4,8 @@ import { canUse, type GuestPermissions } from "@/lib/permissions/rules";
 import { readGuestPermissions } from "@/lib/permissions/state";
 import { fairSingerOrder } from "@/lib/songs/rotation";
 import { normalizeSingerAssignment, type SingerAssignment } from "@/lib/songs/singers";
+import { readRoomPartyTheme } from "@/lib/themes/state";
+import type { PartyThemeId } from "@/lib/themes/rules";
 
 export type QueueItem = {
   id: string;
@@ -16,7 +18,7 @@ export type QueueItem = {
   requestedBy: string | null;
   position: number;
 };
-export type QueueSnapshot = { version: number; items: QueueItem[]; fairRotation: boolean; guestPermissions: GuestPermissions };
+export type QueueSnapshot = { version: number; items: QueueItem[]; fairRotation: boolean; guestPermissions: GuestPermissions; partyTheme: PartyThemeId };
 export class QueueError extends Error {
   constructor(public readonly reason: "invalid" | "stale" | "duplicate" | "limit" | "limited" | "missing" | "ended" | "forbidden") { super(reason); }
 }
@@ -89,6 +91,7 @@ async function snapshot(client: PoolClient, roomId: string): Promise<QueueSnapsh
     items: (await rowsForRoom(client, roomId)).map(toItem),
     fairRotation: await fairRotationEnabled(client, roomId),
     guestPermissions: await readGuestPermissions(client, roomId),
+    partyTheme: await readRoomPartyTheme(client, roomId),
   };
 }
 async function publish(client: PoolClient, roomId: string): Promise<number> {

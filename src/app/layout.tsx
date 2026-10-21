@@ -3,6 +3,7 @@ import "./globals.css";
 import "./theme.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { PARTY_THEME_BOOT_SCRIPT } from "@/lib/themes/rules";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -26,7 +27,17 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={cn("dark", "font-sans", geist.variable)}>
+    <html
+      lang="en"
+      className={cn("dark", "font-sans", geist.variable)}
+      suppressHydrationWarning
+    >
+      <head>
+        <script
+          id="party-theme-boot"
+          dangerouslySetInnerHTML={{ __html: PARTY_THEME_BOOT_SCRIPT }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

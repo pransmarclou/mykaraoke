@@ -6,11 +6,11 @@ export class PermissionError extends Error {
   constructor(public readonly reason: "invalid" | "ended") { super(reason); }
 }
 
-type Row = { allow_guest_songs: boolean; guest_queue_control: boolean; guest_playback_control: boolean; guest_reactions: boolean };
+type Row = { allow_guest_songs: boolean; guest_queue_control: boolean; guest_playback_control: boolean; guest_reactions: boolean; guest_ratings: boolean };
 
 export async function readGuestPermissions(client: PoolClient, roomId: string): Promise<GuestPermissions> {
   const result = await client.query<Row>(
-    `select allow_guest_songs, guest_queue_control, guest_playback_control, guest_reactions
+    `select allow_guest_songs, guest_queue_control, guest_playback_control, guest_reactions, guest_ratings
        from public.room_settings where room_id = $1`,
     [roomId],
   );
@@ -21,6 +21,7 @@ export async function readGuestPermissions(client: PoolClient, roomId: string): 
     queueControl: row.guest_queue_control,
     playbackControl: row.guest_playback_control,
     reactions: row.guest_reactions,
+    ratings: row.guest_ratings,
   };
 }
 
@@ -39,9 +40,10 @@ export async function updateGuestPermissions(roomId: string, patch: Partial<Gues
          allow_guest_songs = coalesce($2, allow_guest_songs),
          guest_queue_control = coalesce($3, guest_queue_control),
          guest_playback_control = coalesce($4, guest_playback_control),
-         guest_reactions = coalesce($5, guest_reactions)
+         guest_reactions = coalesce($5, guest_reactions),
+         guest_ratings = coalesce($6, guest_ratings)
        where room_id = $1`,
-      [roomId, patch.addSongs ?? null, patch.queueControl ?? null, patch.playbackControl ?? null, patch.reactions ?? null],
+      [roomId, patch.addSongs ?? null, patch.queueControl ?? null, patch.playbackControl ?? null, patch.reactions ?? null, patch.ratings ?? null],
     );
     // Bumping the queue version makes every connected phone refetch its
     // snapshot, so a disabled control disappears without a page reload.

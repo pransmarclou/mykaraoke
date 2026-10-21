@@ -3,7 +3,8 @@
 **Your songs. Your stage. Your party.**
 
 MyKaraoke is a web-first karaoke party platform by Nook Studio. The current
-Phase 9 implementation lets a host create a temporary room, guests join, and everyone
+Phase 10 web-MVP work builds on the implemented Phase 9 party features: a host
+can create a temporary room, guests join, and everyone
 see a shared roster and song queue. With a server YouTube API key, guests can
 search for embeddable karaoke videos, assign a singer, and add up to three
 active songs. The host can reorder, skip, or remove entries. A paired TV/browser
@@ -15,8 +16,18 @@ browser-local favorites and send fixed, rate-limited reactions that briefly
 appear on the paired TV while a singer is active. Songs can name a distinct
 duet partner, and both singers remain visible through the queue and TV stage.
 The host can also enable fair singer rotation and manually override it with the
-existing order controls.
-Lifecycle release checks,
+existing order controls. Host-configured permissions control guest song adds,
+queue actions, reactions, ratings, and optional phone playback commands. Hosts
+and guests can rate the current or just-finished performance; the room-only
+leaderboard appears on controllers and the paired TV.
+Three accessible party themes—Stage Glow, Electric Blue, and Velvet Gold—can
+be selected from the header outside rooms and persist in that browser. Inside
+a room, the host selects one shared theme that reaches authenticated host and
+guest pages plus the paired TV through server snapshots; leaving restores the
+browser's personal preference.
+The public `/compatibility` page performs a permission-free browser API check
+and shows recorded versus still-open device evidence; it does not claim that
+detected APIs prove real hardware support. Lifecycle release checks,
 the dedicated hosted-test reaction journey, and real microphone hardware
 verification remain pending; payments are planned in [the functional build
 phases](Docs/build-phases.md).
@@ -54,6 +65,9 @@ server-only hosted PostgreSQL connection as `DATABASE_URL`, the project URL as
 of client code and Git. `cp -n` leaves an existing `.env.local` untouched.
 Apply additive migrations to the intended hosted project through a reviewed
 migration step; never point a development command at an unrelated project.
+The hosted MVP now has the `party_theme` column required by queue and playback
+snapshots. Apply `20261020070000_party_theme.sql` to every other target before
+deploying this code there, and reconcile the hosted migration history.
 Localhost invites remain same-computer previews; phones need the deployed HTTPS
 origin.
 
@@ -116,10 +130,20 @@ interfaces appear only when the browser and operating system expose them.
 Output follows the system default in this phase. Wireless latency is not
 inferred from a device name. Permission denial, missing or lost inputs, and a
 suspended audio context have recovery states. These flows passed mocked desktop
-and mobile Chromium tests, but no real Mac/Windows microphone, USB interface,
-Bluetooth route, latency, or acoustic-feedback check has been performed.
+and mobile Chromium tests. Real Safari has verified MacBook and USB EarPods
+input discovery, switching, activity, mute, and a bounded low-volume monitor
+state routed to EarPods. The owner confirmed that monitoring was audible;
+separate latency characterization, unplug recovery, Windows, Bluetooth, and
+broader acoustic-feedback checks remain open.
 
 ## Room security and lifecycle
+
+Every response applies one-year HSTS, same-origin frame protection,
+`nosniff`, `strict-origin-when-cross-origin`, and a restrictive Permissions
+Policy. Same-origin microphone access remains available for Microphone Studio;
+camera, geolocation, payment, USB, and browsing-topics are disabled. A complete
+nonce-based CSP remains a Phase 10 gate because it must explicitly preserve the
+theme bootstrap, YouTube player/thumbnails, and Supabase Realtime connections.
 
 Room codes are public identifiers, not host credentials. The host credential is
 32 random bytes in an HttpOnly, host-only cookie; only its SHA-256 digest is
@@ -188,8 +212,10 @@ skip removes an entry; playback skip advances the active song.
 The host generates an eight-character TV pairing code and opens `/tv/[code]` on
 the playback browser. Entering the code gives that browser a private HttpOnly
 device session; pairing a new display revokes the prior one. The host starts a
-queued song and may pause, resume, or skip. The TV must press **Start video**
-when the browser requires a user gesture. The TV reports actual player events;
+queued song and may pause, resume, or skip. Each newly cued singer gets a
+five-second ready screen before the TV enables **Start video**. Arrow keys move
+between TV actions, Enter selects the focused action, and Back exits fullscreen
+when supported by the browser. The TV reports actual player events;
 server transactions advance the queue on end or host skip. Guests see the
 current and next singer without receiving playback authority. Some videos
 reject embedding even after the Data API reports them eligible; the TV shows

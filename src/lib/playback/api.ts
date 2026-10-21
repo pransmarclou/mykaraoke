@@ -6,7 +6,7 @@ import { isValidRoomCode } from "@/lib/rooms/room-code";
 import { songRoomAccess } from "@/lib/songs/api";
 import { PlaybackError, touchTv, tvRoomAccess } from "@/lib/playback/state";
 
-export async function playbackReader(code: string): Promise<{ roomId: string; role: "host" | "guest" | "tv" }> {
+export async function playbackReader(code: string): Promise<{ roomId: string; role: "host" | "guest" | "tv"; guestId?: string }> {
   if (!isValidRoomCode(code)) throw new PlaybackError("invalid");
   const cookieStore = await cookies();
   const credential = cookieStore.get(TV_COOKIE_NAME)?.value;
@@ -16,7 +16,7 @@ export async function playbackReader(code: string): Promise<{ roomId: string; ro
     return { roomId: tvRoomId, role: "tv" };
   }
   const access = await songRoomAccess(code);
-  return { roomId: access.roomId, role: access.role };
+  return { roomId: access.roomId, role: access.role, guestId: access.guestId };
 }
 
 export function playbackApiError(error: unknown, context: string): NextResponse {

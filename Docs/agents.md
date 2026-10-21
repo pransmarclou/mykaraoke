@@ -14,12 +14,21 @@ not the normal development path. Database-mutating tests require a separate
 hosted test project and its exact `MYKARAOKE_TEST_DB_HOST` allowlist. The owner
 explicitly advanced work into Phase 8 on 2026-10-19 and, on 2026-10-20,
 explicitly authorized Phase 9 work while deferring the remaining Phase 7–8
-verification.
+verification. On 2026-10-20 the owner then directed work into Phase 10 while
+the combined Phase 9 hosted-test journey remains pending.
 Phase 8 is implemented with mocked browser verification, but must not be called
 accepted until its real hardware matrix and feedback/latency checks pass.
-Phase 9 is in build; local browser favorites, ephemeral TV reactions, fair
-singer rotation, and duet singer assignment are implemented functional slices
-with hosted verification pending.
+Phase 9 is implemented, verification pending; local browser favorites,
+ephemeral TV reactions, fair
+singer rotation, duet singer assignment, guest permissions/phone remote, and
+audience ratings with a live leaderboard, and three accessible host-synchronized
+room themes are implemented functional slices with hosted and combined
+verification pending. A read-only check confirms that the hosted MVP has the
+room-theme column; the dedicated hosted test project and migration-history
+reconciliation are still required. Phase 10 is now in build with a public,
+non-invasive browser readiness check plus verified response-header hardening.
+Runtime dependencies audit clean; the documented development-only lint-chain
+advisory, CSP, hosted smoke checks, and physical device matrix remain open.
 
 Work one functional phase at a time. A phase is complete only after its
 behavior is implemented, tested, documented, and accepted. Do not build all

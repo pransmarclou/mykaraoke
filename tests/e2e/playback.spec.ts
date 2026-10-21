@@ -63,6 +63,10 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await tv.getByRole("textbox", { name: "TV pairing code" }).fill(pairCode);
     await tv.getByRole("button", { name: "Pair this display" }).click();
     await expect(tv.getByText("Waiting for the next song")).toBeVisible();
+    await expect(tv.getByRole("img", { name: `QR code to join room ${code}` })).toBeVisible();
+    await expect(tv.getByRole("button", { name: "Enter fullscreen" })).toBeVisible();
+    await tv.keyboard.press("ArrowRight");
+    await expect(tv.getByRole("button", { name: "Enter fullscreen" })).toBeFocused();
     const tvCookie = (await tvContext.cookies()).find((cookie) => cookie.name === "mk_tv_session");
     expect(tvCookie?.httpOnly).toBe(true);
     expect(await tv.evaluate(() => document.cookie.includes("mk_tv_session"))).toBe(false);
@@ -74,8 +78,13 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(page.getByTestId("queue-item")).toHaveCount(2);
     await page.getByRole("button", { name: "Start next song" }).click();
     await expect(tv.getByRole("heading", { name: titles[0] })).toBeVisible({ timeout: 10_000 });
+    await expect(tv.getByTestId("singer-countdown")).toBeVisible();
+    await expect(tv.getByRole("button", { name: "Singer getting ready" })).toBeDisabled();
     await expect(tv.getByTestId("tv-player").locator("iframe")).toBeVisible();
-    await tv.getByRole("button", { name: "Start video" }).click();
+    await expect(tv.getByRole("button", { name: "Start video" })).toBeVisible({ timeout: 10_000 });
+    await tv.keyboard.press("ArrowRight");
+    await expect(tv.getByRole("button", { name: "Start video" })).toBeFocused();
+    await tv.keyboard.press("Enter");
     await expect(page.getByText("Player: playing")).toBeVisible({ timeout: 10_000 });
     await expect(guest.getByText("Player: playing")).toBeVisible({ timeout: 10_000 });
     await expect(guest.getByText(`Singer: Alex`)).toBeVisible();

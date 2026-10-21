@@ -5,7 +5,7 @@ import { ArrowRight, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { normalizeRoomCode } from "@/lib/rooms/room-code-format";
 
-export function JoinForm({ initialCode = "" }: { initialCode?: string }) {
+export function JoinForm({ initialCode = "", variant = "panel" }: { initialCode?: string; variant?: "panel" | "launch" }) {
   const [code, setCode] = useState(initialCode);
   const [displayName, setDisplayName] = useState("");
   const [pending, setPending] = useState(false);
@@ -37,8 +37,9 @@ export function JoinForm({ initialCode = "" }: { initialCode?: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="feature-panel mt-9 max-w-xl rounded-2xl p-6">
-      <p className="text-xs font-black uppercase tracking-[0.15em] text-[#ffad69]">Step into the room</p>
+    <form onSubmit={submit} className={`feature-panel max-w-xl rounded-[1.75rem] p-6 sm:p-8 ${variant === "panel" ? "mt-9" : "min-h-full"}`}>
+      <p className="text-xs font-black uppercase tracking-[0.15em] text-[#ffad69]">{variant === "launch" ? "On your phone" : "Step into the room"}</p>
+      {variant === "launch" ? <h2 className="mt-3 text-3xl font-black tracking-[-0.045em]">Join the party</h2> : null}
       <p className="mt-3 text-sm leading-7 text-muted-foreground">Use the host&apos;s six-character code or open their invite link. No account needed.</p>
       <div className="mt-5">
         <label htmlFor="room-code" className="mb-2 block text-sm font-semibold text-white">Room code</label>

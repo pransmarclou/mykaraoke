@@ -6,6 +6,8 @@ import { commandReplayDecision, playerEventTransition, type PlayerEvent } from "
 import { canUse, type GuestPermissions } from "@/lib/permissions/rules";
 import { readGuestPermissions } from "@/lib/permissions/state";
 import { QueueError, reserveQueueMutation } from "@/lib/songs/queue";
+import { readRoomPartyTheme } from "@/lib/themes/state";
+import type { PartyThemeId } from "@/lib/themes/rules";
 
 const PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -22,6 +24,7 @@ export type PlaybackSnapshot = {
   devicePaired: boolean;
   tvConnected: boolean;
   guestPermissions: GuestPermissions;
+  partyTheme: PartyThemeId;
 };
 export class PlaybackError extends Error {
   constructor(public readonly reason: "invalid" | "forbidden" | "not_allowed" | "limited" | "ended" | "empty" | "no_device" | "current" | "pair_invalid" | "pair_limited") { super(reason); }
@@ -63,6 +66,7 @@ async function snapshot(client: PoolClient, roomId: string): Promise<PlaybackSna
     next: await nextSong(client, roomId), devicePaired: Boolean(state?.device_hash),
     tvConnected: Boolean(state?.device_seen_at && Date.now() - state.device_seen_at.getTime() < 20_000),
     guestPermissions: await readGuestPermissions(client, roomId),
+    partyTheme: await readRoomPartyTheme(client, roomId),
   };
 }
 export async function playbackSnapshot(roomId: string): Promise<PlaybackSnapshot> {

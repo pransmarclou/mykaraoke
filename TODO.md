@@ -9,23 +9,43 @@
   phone/TV-browser checks before asking for owner acceptance. The production
   cleanup schedule is configured; its first natural invocation remains an
   operational check rather than a reason to mutate live data manually.
-- Phase 8 gate: manually verify permission, input switching, monitoring,
-  feedback safety, disconnect recovery, and measured latency on actual Mac and
-  Windows hardware with built-in, USB/audio-interface, and available Bluetooth
-  devices. Record exactly which combinations were tested.
+- Phase 8 gate: the owner confirmed audible USB EarPods monitoring. Separately
+  characterize latency, then verify disconnect recovery and the remaining
+  Windows and available Bluetooth combinations. Record exactly which devices
+  and routes were tested.
 - Phase 9 reaction/rotation/duet gate: apply all three additive Phase 9 migrations to the
   dedicated hosted test project, then run the authored integration and
   host/guest/TV Playwright journeys. Apply all three migrations in order before any
   production code deployment; do not run those suites against live MVP data.
 - Phase 9 guest-permission gate: apply `20261020050000_guest_permissions.sql`
-  to the dedicated hosted test project, run `tests/integration/permissions.test.ts`
-  and `tests/e2e/permissions.spec.ts`, then apply it to production before
-  deploying the code that reads the new columns.
-- Continue Phase 9 with the independently testable standard-theme slice.
-- Scores and leaderboard: owner-requested new scope; add it to
-  `Docs/build-phases.md` as its own slice before building.
+  to the dedicated hosted test project, then run
+  `tests/integration/permissions.test.ts` and `tests/e2e/permissions.spec.ts`.
+  The hosted MVP columns are present; reconcile migration history before the
+  deployment review.
+- Phase 9 theme gate: Stage Glow, Electric Blue, and Velvet Gold pass focused
+  desktop/mobile personal persistence, overflow, and accessibility checks.
+  Room-wide host/guest/TV synchronization is implemented. The hosted MVP
+  column is present; apply
+  `20261020070000_party_theme.sql` to the dedicated hosted test project and run
+  `tests/integration/themes.test.ts` plus `tests/e2e/themes.spec.ts`. Apply the
+  migration to every other target before code deployment and reconcile hosted
+  migration history.
+- Phase 9 scores gate: apply `20261020060000_performance_ratings.sql` to the
+  dedicated hosted test project, run `tests/integration/scores.test.ts` and
+  `tests/e2e/scores.spec.ts`, and reconcile migration history. The hosted MVP
+  table and rating-permission column are already present.
 - Finish the cross-browser web MVP through Phase 10 before building the native
   app. Do not add a web paywall or mandatory app-install gate in that stage.
+- Phase 10 readiness gate: use `/compatibility` as the honest browser-side
+  preflight, then fill the named physical iPhone, Android, Windows, TV-browser,
+  Bluetooth, latency, disconnect, and Firefox evidence gaps. API detection is
+  not device acceptance.
+- Phase 10 security gate: response hardening and runtime dependency audit pass.
+  Design and test a nonce-based CSP for the inline theme bootstrap, official
+  YouTube origins, thumbnails, and Supabase Realtime before enforcement. Do not
+  apply npm's suggested breaking downgrade for the dev-only
+  `eslint-config-next -> braces` advisory; recheck for a compatible upstream
+  release.
 - After the web gate, decide the native stack and account migration, then build
   app-scanned QR pairing to a web-display claim before subscriptions.
 - For Native N4, implement the documented Free/Premium model: 10 initial

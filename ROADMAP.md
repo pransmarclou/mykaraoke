@@ -10,12 +10,19 @@ Web Phase 7: MVP reconnection and lifecycle gate — implemented locally,
 verification pending (full suite, nonproduction deployment, devices).
 Web Phase 8: local Microphone Studio — implemented; real hardware verification
 pending before acceptance.
-Web Phase 9: singer and party experience — in build. Browser-local favorites,
+Web Phase 9: singer and party experience — implemented, verification pending. Browser-local favorites,
 ephemeral rate-limited TV reactions, fair singer rotation, and duet assignment
-are implemented; dedicated hosted-test verification plus themes and permissions
-remain open.
+plus guest permissions/phone remote and audience ratings/live leaderboard are
+implemented. Three accessible personal themes plus host-synchronized room
+themes are also implemented; dedicated hosted-test, combined multi-context,
+migration-history, and physical TV verification remain open.
 Web Phase 10: real phone/laptop/TV-browser compatibility, hardening, and web
-MVP launch — not started. The web remains usable without an app or payment.
+MVP launch — in build. A public permission-free browser readiness check and
+truthful tested-versus-open evidence ledger are implemented, along with tested
+security/privacy response headers, a clean runtime dependency audit, branded
+TV pairing/waiting states, a five-second singer-ready transition, and
+directional remote focus. CSP, deployed smoke, and physical-device evidence
+remain open. The web remains usable without an app or payment.
 
 Only after the web MVP is accepted: native N1 builds iOS/Android core party
 actions; N2 adds app-scanned QR pairing to the web big screen; N3 covers

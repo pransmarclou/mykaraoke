@@ -47,6 +47,10 @@ test("host creates a real room, recovers after refresh, and cannot be impersonat
   await page.getByRole("textbox", { name: "Your display name" }).fill("Host Preview");
   await page.getByRole("button", { name: "Join room" }).click();
   await expect(page).toHaveURL(new RegExp(`/room/${code}$`));
+  await expect(page.getByRole("navigation", { name: "Phone room controls" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Phone room controls" }).getByRole("button")).toHaveCount(4);
+  await page.getByRole("button", { name: "Stage" }).click();
+  await expect(page.getByRole("heading", { name: "On stage" })).toBeVisible();
   await expect(page.getByTestId("participant")).toContainText("Host PreviewHere");
   const guestAccessibility = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   expect(guestAccessibility.violations).toEqual([]);

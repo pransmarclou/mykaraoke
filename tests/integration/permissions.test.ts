@@ -34,7 +34,7 @@ async function permissionsFor(roomId: string) {
 
 test("new rooms keep the default guest permissions and snapshots expose them", async () => {
   const host = await createHostRoom(); rooms.push(host.room.id);
-  assert.deepEqual(await permissionsFor(host.room.id), { addSongs: true, queueControl: false, playbackControl: false, reactions: true });
+  assert.deepEqual(await permissionsFor(host.room.id), { addSongs: true, queueControl: false, playbackControl: false, reactions: true, ratings: true });
   assert.deepEqual((await queueSnapshot(host.room.id)).guestPermissions, await permissionsFor(host.room.id));
 });
 
@@ -79,7 +79,7 @@ test("each disabled permission is rejected by its server boundary and re-enablin
 
 test("hosts are never restricted by guest permissions", async () => {
   const host = await createHostRoom(); rooms.push(host.room.id);
-  await updateGuestPermissions(host.room.id, { addSongs: false, queueControl: false, playbackControl: false, reactions: false });
+  await updateGuestPermissions(host.room.id, { addSongs: false, queueControl: false, playbackControl: false, reactions: false, ratings: false });
   const id = await seedSong("pBcDeFgHi03");
   const snapshot = await addQueueItem({ roomId: host.room.id, role: "host", searchResultId: id, singerName: "Host", requestKey: randomUUID() });
   assert.equal(snapshot.items.length, 1);

@@ -7,19 +7,26 @@ to evidence or code rather than restating large documents.
 ## Snapshot
 
 - Last updated: 2026-10-20
-- Current stage: Phase 9 — Singer and party experience
-- Current status: In build; browser-local favorites, ephemeral TV reactions,
-  fair singer rotation, and duet assignment are implemented slices. Phases 7–8
-  remain implemented with verification pending
-- Repository state: Phase 9 reaction/rotation/duet code, additive migrations,
-  tests, and documentation are uncommitted on `main`; the prior cleanup deployment remains live
-- Current phase gate: Complete and jointly verify all Phase 9 party features.
-  The deferred Phase 7 multi-device and Phase 8 hardware/audio checks remain
-  open and are not acceptance evidence
+- Current stage: Phase 10 — Cross-browser web MVP, compatibility, and launch
+- Current status: In build; Phase 9 browser-local favorites, ephemeral TV reactions,
+  fair singer rotation, duet assignment, guest permissions/phone remote, and
+  audience ratings/live leaderboard, and host-synchronized accessible party
+  themes are implemented slices. Phases 7–8 remain implemented with
+  verification pending. Phase 10 now has a public, non-invasive browser
+  capability and real-device evidence surface
+- Repository state: `main` is one local commit ahead of `origin/main` with the
+  guest-permission slice; the ratings/leaderboard slice, additive migration,
+  room-theme synchronization slice and additive migration, Phase 10 readiness
+  slice, tests, and documentation remain uncommitted. The prior cleanup
+  deployment remains live
+- Current phase gate: Complete Phase 10 hardening and the named real-device
+  matrix. The deferred Phase 7 multi-device, Phase 8 hardware/audio, and
+  combined Phase 9 hosted-test checks remain open and are not acceptance
+  evidence
 - Delivery direction: Finish the phone/laptop/TV-browser web MVP through Phase
   10; only then begin the installed iOS/Android N1–N5 track and native
   subscriptions. The owner explicitly advanced work into Phase 8 on 2026-10-19
-  and Phase 9 on 2026-10-20 while deferring the remaining Phase 7–8 checks.
+  and Phases 9–10 on 2026-10-20 while deferring the remaining Phase 7–9 checks.
 - Primary reference target: `https://okevideoke.online/`
 - Dedicated host reference: `https://okevideoke.online/host`
 - Paywall reference: Visible `/premium` route and root-page entry observed;
@@ -731,6 +738,42 @@ test-project, browser/device, and audio-hardware matrices are completed.
   not started and feedback or latency was not inferred. This is a physical
   hardware gate, not a software pass or failure.
 
+## Phase 8 USB EarPods hardware follow-up — 2026-10-20
+
+- Hardware inventory identified Apple `EarPods` output and `EarPods
+  Microphone` input over USB at 44.1 kHz. The EarPods microphone was the macOS
+  default input; `MacBook Pro Microphone` and `Prans Microphone` remained
+  available at 48 kHz. macOS still reported `MacBook Pro Speakers` as the
+  default output.
+- In real Safari on localhost, the owner-approved microphone permission opened
+  Microphone Studio with `EarPods Microphone` selected and `Mic ready · monitor
+  off`. The live meter returned a non-zero 1% reading.
+- The browser input picker exposed all three named inputs. Switching EarPods →
+  MacBook Pro Microphone → EarPods completed without an error, and the external
+  input returned to a non-zero meter reading. Mute changed to `Unmute mic` and
+  restored to `Mute mic` when toggled back.
+- Monitoring follow-up: With owner approval, macOS media output was changed
+  from `MacBook Pro Speakers` to USB `EarPods`; a read-only hardware check then
+  reported EarPods as both default media output and default input. The app's
+  monitor volume was lowered to 9%, `Start monitoring` changed to `Stop
+  monitoring`, the UI reported `Monitoring locally`, and the live input meter
+  reached 3–7%. Monitoring was stopped after five seconds and the Safari page
+  was closed to release capture.
+- Safety boundary: The wired headphone route made this a bounded low-volume
+  monitoring check. No audio was uploaded or recorded. The application state
+  and output route passed, and the owner subsequently confirmed that the
+  monitor was audible. Because the confirmation followed a compound
+  clarity/noticeable-delay question, it does not unambiguously characterize
+  latency; no latency number or acoustic-feedback claim is made.
+- Temporary room `QDVZQK` was created for this manual check and will expire
+  under the ordinary 24-hour room policy. No automated mutating suite ran
+  against MVP data.
+- Remaining Phase 8 gate: characterize latency separately, exercise
+  unplug/replug recovery, and cover Windows plus any available Bluetooth
+  input/output. USB EarPods capture, in-app switching, and audible bounded
+  monitoring in Safari are accepted only for the evidence above; Phase 8
+  remains verification-pending overall.
+
 ## Phase 7 scheduled cleanup and observability — 2026-10-20
 
 - Added `GET /api/internal/rooms/cleanup` and a Vercel Cron configuration for
@@ -894,6 +937,38 @@ test-project, browser/device, and audio-hardware matrices are completed.
   allowlisted hosted test project and run the combined reaction, rotation,
   duet, playback, and reconnection journeys before the theme or permission slice.
 
+## Phase 9 scores and leaderboard slice — 2026-10-20
+
+- Scope: Owner-requested addition recorded in `Docs/build-phases.md` Phase 9.
+  Design is MyKaraoke's own (F-15); REA evidence
+  `ev_cc0a310265480a9555f32ebd441b8ee97f5084c533c3eb5580470d1e31e0553b`
+  showed only an empty Scores state after host Skip, while
+  `ev_8a9555e1b28c07f2b98efb223880646c25013b9f3abb29520fc9012e97e64853`
+  showed product copy saying the singer records a score. The guest input and
+  cheer-weighting mechanics remain unobserved and were not copied.
+- Completed: Host and guest pages have a Scores panel. Anyone in the room can
+  rate the song on stage, or the one that just finished until the next starts,
+  1–5 stars; re-rating replaces their earlier rating. Ratings group by
+  performer (duet pair = one performer) into a top-10 leaderboard by average,
+  then rating count. The paired TV shows the leaderboard without rating
+  controls. A fifth host switch, "Rate performances", turns guest rating off.
+- Security/data: Ratings go through a same-origin POST that checks room,
+  permission, and the current rateable song inside a locked transaction.
+  Ratings reuse the reaction window budget under a `rating:` actor key.
+  Migration `20261020060000_performance_ratings.sql` adds a service-role-only,
+  RLS-enabled `performance_ratings` table and `room_settings.guest_ratings`.
+  Panels poll every 4 seconds; no rating history leaves the room.
+- Tests run: TypeScript, lint, unit 45/45, and the production build passed.
+  `tests/integration/scores.test.ts` and `tests/e2e/scores.spec.ts` are
+  authored but not run (no allowlisted hosted test project).
+- Known limitations: Singer names are free text, so a guest can rate a song
+  they sang themselves (one rating each). Scores last only as long as the room.
+- Deployment boundary: The slice remains uncommitted. A 2026-10-20 read-only
+  schema check confirmed the hosted MVP database now has both
+  `public.performance_ratings` and `room_settings.guest_ratings`; local manual
+  room requests to the score endpoint returned 200. Migration-history alignment
+  and the separately allowlisted test-project suites remain open.
+
 ## Phase 9 guest permissions and phone remote slice — 2026-10-20
 
 - Reference boundary: The owner asked to apply the reference's features and
@@ -901,9 +976,10 @@ test-project, browser/device, and audio-hardware matrices are completed.
   read (not REA; no REA tool was loaded) found only marketing copy for that
   claim. No credentials were entered; the owner was told to sign in themselves
   if authenticated states are needed. See F-14.
-- Completed: The host room has a Guest permissions panel with four switches:
+- Completed: The host room has a Guest permissions panel with five switches:
   add songs (existing `allow_guest_songs`), remote control, manage queue, and
-  reactions. With remote control on, a guest phone shows Start next song,
+  reactions, plus the ratings switch added by the scores slice. With remote
+  control on, a guest phone shows Start next song,
   Pause/Resume, and Skip current for the paired TV. Queue and playback
   snapshots carry the permissions, and changing one publishes a queue version
   so connected phones update without reload.
@@ -918,12 +994,13 @@ test-project, browser/device, and audio-hardware matrices are completed.
   passed. `tests/integration/permissions.test.ts` and
   `tests/e2e/permissions.spec.ts` are authored but not run: no separately
   allowlisted hosted test project is configured.
-- Deployment boundary: The migration has not been applied anywhere and the
-  slice is uncommitted. Apply the migration to production before pushing the
-  code to `main`; the deployed code reads the new columns on every playback
-  and queue request (see the schema incident below).
-- Next exact action: Owner review; apply the migration to a test project and
-  run the two authored suites, then to production before deploying.
+- Deployment boundary: The slice is committed locally but not pushed. A
+  2026-10-20 read-only schema check confirmed all three guest-permission columns
+  plus `guest_ratings` exist on the hosted MVP database. Migration-history
+  alignment and the separately allowlisted test-project suites remain open.
+- Next exact action: Owner review; apply the same migration set to a dedicated
+  hosted test project and run the authored permission and score suites before
+  deployment verification.
 
 ## Phase 9 production schema incident — 2026-10-20
 
@@ -941,6 +1018,249 @@ test-project, browser/device, and audio-hardware matrices are completed.
   code that reads the new columns to `main`, which may deploy automatically.
 - Still open: The combined Phase 9 journeys have not run on a separately
   allowlisted hosted test project, and manual browser and TV checks remain open.
+
+## Phase 9 standard party themes slice — 2026-10-20
+
+- Completed: Added three fixed design-token themes: owner-brand `Stage Glow`,
+  cool `Electric Blue`, and warm `Velvet Gold`. A compact header control cycles
+  through them, announces the current and next choice to assistive technology,
+  and remains usable at a 320px viewport. The selected theme is restored before
+  first paint and persists in that browser under the versioned
+  `mykaraoke:party-theme:v1` key.
+- Boundary: Theme IDs are allowlisted; stored values cannot inject CSS. This
+  initial slice was a visual preference local to each browser and did not write
+  to Supabase. Stage Glow remains the default and preserves the supplied
+  MyKaraoke brand palette. The room synchronization follow-up below supersedes
+  the cross-device limitation while a user is inside a room.
+- Verification: TypeScript, lint, 48/48 unit tests, optimized production build,
+  and 12/12 focused desktop/mobile Chromium shell tests passed. The browser
+  checks covered cycling, reload persistence, horizontal overflow, and WCAG
+  A/AA Axe scans. All three themes received a manual visual pass in the in-app
+  browser. `git diff --check` passed.
+- React/Next review: The theme picker stays a small Client Component inside the
+  server-rendered header. `useSyncExternalStore` handles local/cross-tab state,
+  and a bounded head bootstrap avoids a theme flash without moving the root
+  layout into the client bundle.
+- Known limitation at this gate: Cross-device room-wide theme synchronization
+  was not part of the initial slice. It is addressed by the follow-up below.
+
+## Phase 9 room-wide theme synchronization slice — 2026-10-20
+
+- Product decision: A party theme should describe the shared room, so the host
+  choice now overrides personal browser preference only while a host, guest, or
+  paired TV is in that room. Leaving the room restores the browser's versioned
+  personal theme preference.
+- Completed: Added host-only `PATCH /api/rooms/[code]/settings/theme`, an
+  allowlisted `room_settings.party_theme` value, queue-version invalidation,
+  and theme fields in queue and playback snapshots. Host controls live in the
+  connected room panel; guests see the selected name; paired TV polling applies
+  the same palette. Guest mutation receives 403, and refresh/reconnect reads
+  the durable room value again.
+- Security/data: Additive migration `20261020070000_party_theme.sql` adds a
+  checked, non-null text column with `stage-glow` default to the existing
+  service-role-only, RLS-protected settings row. The route requires the private
+  host session and same-origin request. No CSS or arbitrary color input reaches
+  storage.
+- Tests run: TypeScript, lint, 48/48 unit checks, optimized production build,
+  `git diff --check`, and 12/12 non-mutating desktop/mobile shell checks passed.
+  `tests/integration/themes.test.ts` and `tests/e2e/themes.spec.ts` cover
+  default/snapshot propagation, constraints, public-role denial, host/guest/TV
+  synchronization, reload persistence, and guest 403, but were not run because
+  no separately allowlisted hosted test project is configured.
+- React/Next review: The global header remains server-rendered and hides the
+  personal picker during active rooms. Only the existing queue and TV Client
+  Components apply snapshot state, using primitive theme dependencies; no new
+  duplicate polling or client-wide provider was added.
+- Deployment boundary: Queue and playback snapshots require
+  `room_settings.party_theme`. After the owner reported applying the migration,
+  a read-only 2026-10-20 information-schema check confirmed that the hosted MVP
+  now has both `party_theme` and the earlier `guest_ratings_enabled` column.
+  No separate hosted test allowlist is configured, so mutating integration and
+  browser suites remain blocked; migration history must still be reconciled.
+- Next exact action: Apply migrations through `20261020070000` to a separately
+  allowlisted hosted test project, run the authored Phase 9 integration and
+  multi-context suites, and review the combined phase gate alongside Phase 10.
+
+## Phase 10 browser readiness slice — 2026-10-20
+
+- Owner direction: The owner said to proceed to the next phase after applying
+  the hosted room-theme schema. This begins Phase 10 but does not convert the
+  deferred Phase 7–9 evidence into acceptance.
+- Completed: Added public `/compatibility` with a client-only, non-invasive
+  check for secure context, local storage, WebSocket, microphone capture APIs,
+  and Web Audio. It requests no permission, enumerates no devices, uploads no
+  data, and labels API presence as detection rather than device support.
+- Evidence display: The page separately lists the automated Chromium, deployed
+  Safari, MacBook/USB EarPods, and sample-player evidence already recorded, and
+  keeps iPhone, Android, Windows, physical TV, Bluetooth, latency, disconnect,
+  and Firefox checks visibly open. The footer links to the page.
+- Tests: Pure rules cover ready, polling fallback, storage-limited, and
+  microphone-unavailable states. The shell suite covers the new route's
+  content, overflow, and WCAG A/AA scan. TypeScript, lint, 52/52 unit tests, the
+  optimized production build, and 14/14 focused desktop/mobile Chromium checks
+  pass. A visual in-app-browser pass confirmed the page hierarchy, detected
+  status cards, evidence ledger, and footer at a narrow viewport.
+- React/Next review: The static route remains a Server Component and sends only
+  the browser probe to the client. A primitive `useSyncExternalStore` snapshot
+  avoids effect-driven state, no capability is persisted or transmitted, list
+  semantics and live status text remain accessible, and no new provider or
+  duplicate request path was introduced.
+- Next exact action: Continue Phase 10 with security, privacy, and deployment
+  hardening without overstating physical-device coverage, then fill the named
+  device matrix as hardware becomes available.
+
+## Phase 10 response security and dependency review — 2026-10-20
+
+- Completed: Added application-wide response headers through the documented
+  Next.js 16 `headers()` configuration: one-year HSTS, `SAMEORIGIN` framing,
+  MIME-sniffing protection, `strict-origin-when-cross-origin` referrers, and a
+  permissions policy that disables camera, geolocation, payment, USB, and
+  browsing-topics while retaining same-origin microphone access for the local
+  Microphone Studio.
+- Compatibility boundary: A Content Security Policy is intentionally deferred.
+  The current pre-paint inline theme script, official YouTube IFrame Player,
+  YouTube thumbnails, and Supabase Realtime endpoints require a reviewed
+  nonce-based policy. Shipping an untested restrictive policy or masking it
+  with broad `unsafe-inline` allowances would weaken or break the MVP.
+- Verification: TypeScript, lint, 52/52 unit tests, optimized production build,
+  and 16/16 focused desktop/mobile Chromium shell checks pass. The new browser
+  check asserts every header. A direct optimized `next start` request returned
+  HTTP 200 with the exact five policies. `git diff --check` passes and a scan
+  of tracked files found no Google API key, service-role assignment, or embedded
+  PostgreSQL URL pattern.
+- Dependency audit: Runtime dependencies report zero known vulnerabilities.
+  The full development audit still reports five high-severity findings through
+  `eslint-config-next -> fast-glob -> micromatch -> braces@3.0.3`. That is the
+  current latest `braces` and `eslint-config-next` chain; npm's offered force
+  fix would downgrade to incompatible Next 14 tooling, so it was not applied.
+- Next exact action: Continue Phase 10 with deployed-origin smoke/observability
+  evidence and a reviewed nonce-based CSP design, while the physical device
+  matrix and dedicated hosted test project remain required for acceptance.
+
+## Phase 10 reference-aligned UI hierarchy slice — 2026-10-20
+
+- Owner direction: Make the UI feel consistent with the current OkeVideoke
+  reference. The product boundary remains behavioral and structural parity,
+  not copying the reference brand, text, imagery, payment treatment, or exact
+  visual composition.
+- Evidence: Fresh root REA evidence
+  `ev_dbf6c6596f0a5d3f234dfefbe1aed9bc097c22ec7f5f288916e3392055ba19bc`
+  and passive `/host` and `/premium` reads confirmed adjacent Host/Join entry
+  cards and a stage-first host surface with compact control tabs. No external
+  state or payment flow was changed.
+- Completed: Reworked the MyKaraoke landing hero into immediately actionable
+  Host and Join cards, including the real anonymous room-code/name form. The
+  active host room now leads with the branded invite stage, keeps pairing and
+  playback prominent, and groups Up next, Scores, Studio, and People into an
+  accessible keyboard-navigable tab rail. Header navigation now exposes Host
+  and Compatibility directly.
+- Identity: The supplied MyKaraoke microphone and wordmark assets, owner-brand
+  gradients, existing six-character room model, security boundaries, and all
+  existing functionality remain intact. No reference asset or copy was added.
+- Verification: TypeScript, lint, 52/52 unit tests, optimized production build,
+  and 16/16 focused desktop/mobile Chromium shell checks pass. Axe reported no
+  WCAG A/AA violations on the public entry surfaces, and overflow checks passed
+  at desktop and phone viewports. Manual desktop and iPhone 13 visual passes
+  confirmed the entry hierarchy, supplied brand assets, touch sizing, readable
+  form labels, and responsive stacking. `git diff --check` also passes.
+- React/Next review: The landing and host pages remain Server Components. The
+  existing join form is the only client boundary on the landing launchpad, and
+  the new host console receives already-rendered panels as serializable React
+  nodes. Its state is one primitive tab ID, inactive panels stay mounted to
+  preserve live room state, and the tab pattern supports click, Arrow keys,
+  Home, and End with roving focus.
+- Next exact action: Run type, lint, unit, optimized build, focused shell, and
+  desktop/mobile visual checks; then continue the Phase 10 hardening/device
+  evidence work without marking the deferred Phase 7–9 gates complete.
+
+## Phase 10 phone controller UI slice — 2026-10-20
+
+- Owner follow-up: Extend the reference-aligned hierarchy to the controls used
+  after a guest joins from a phone.
+- Evidence boundary: Retained reference evidence establishes phone queueing,
+  host tabs, active-singer guidance, and marketing claims about phone remote
+  control. It does not establish the complete guest-phone control layout, so
+  MyKaraoke uses its own explicit controller organization instead of claiming
+  visual parity with an unobserved screen.
+- Completed: The guest room now opens with Songs first and adds a persistent,
+  safe-area-aware mobile control dock for Songs, Stage, Scores, and People.
+  Each 56px touch target jumps to the existing live panel without unmounting
+  it, so queue, playback, ratings, reactions, presence, and reconnect state are
+  preserved. Reduced-motion preference disables smooth scrolling. Desktop
+  keeps the same controls as a compact shortcut rail above a responsive grid.
+- Security: The dock only reorganizes existing controls. Host-configured guest
+  permissions and all server authorization remain unchanged; remote actions
+  still appear only when the host enables them.
+- Verification: TypeScript, lint, 52/52 unit tests, optimized production build,
+  16/16 focused desktop/mobile Chromium shell checks, and `git diff --check`
+  pass. The existing room journey now asserts the four-item controller and its
+  Stage shortcut, but the database-mutating journey was not run against the
+  hosted MVP because no separately allowlisted hosted test project is
+  configured. Real iOS/Android touch verification therefore remains open.
+- React/Next review: The authenticated room stays a Server Component and passes
+  already-rendered panels into one small Client Component. The dock keeps every
+  panel mounted, avoiding duplicate polling and preserving live room state;
+  only one primitive location value rerenders. Existing actions now meet a
+  44px minimum and the dock uses 56px targets plus safe-area inset spacing.
+
+## Phase 10 TV stage UI slice — 2026-10-20
+
+- Owner follow-up: Extend the reference-aligned hierarchy to the big-screen TV
+  surface after completing the host and guest-phone organization.
+- Evidence boundary: Retained authenticated reference evidence establishes a
+  stage-first hierarchy with a prominent room code and compact secondary
+  controls. It does not establish a separate-TV pairing model or the complete
+  reference waiting state, so MyKaraoke keeps its independently designed and
+  already-authorized display workflow.
+- Completed: The unpaired route now presents a branded, long-distance pairing
+  screen. Once paired, the TV shows the MyKaraoke wordmark, room code, a
+  fullscreen control, and a large waiting stage with a public join QR. Active
+  playback keeps the official YouTube player dominant and shows the singer,
+  player state, next singer, scores, and ephemeral reactions alongside it.
+- Security: Pairing still requires the expiring host-generated TV code and an
+  HttpOnly device session. The QR contains only the public guest join URL, and
+  the TV gains no queue, room-setting, or host playback authority.
+- Verification: TypeScript, lint, 52/52 unit tests, the optimized production
+  build, 16/16 focused desktop/mobile Chromium shell checks, and
+  `git diff --check` pass. A 1280x720 visual pass confirmed the public TV
+  pairing hierarchy, long-distance type, full owner wordmark, room-code
+  prominence, and lack of horizontal overflow. The paired journey now asserts
+  the join QR and fullscreen control, but it was not run against hosted MVP
+  data because no separately allowlisted hosted test project is configured.
+- React/Next review: QR generation stays in the dynamic Server Component and
+  sends one data URL to the existing TV Client Component. The TV adds only one
+  primitive fullscreen state and one browser event listener; playback polling,
+  realtime reactions, authorization, and official-player lifecycle remain
+  unchanged.
+
+## Phase 10 TV remote and singer-ready slice — 2026-10-20
+
+- Owner direction: Proceed with the recommended TV remote navigation and
+  between-song singer transition after the stage-first TV redesign.
+- Product boundary: The retained reference evidence did not establish either
+  behavior, so this is an independent MyKaraoke usability decision rather than
+  a claim of reference parity.
+- Completed: Every newly cued song now receives a five-second, long-distance
+  singer-ready screen before the browser player activation becomes available.
+  Arrow keys move through visible enabled TV actions with wrapping focus,
+  Enter uses native button activation, and Back/Escape exits fullscreen when
+  active. Pairing and player actions have explicit high-contrast focus rings
+  and on-screen remote guidance.
+- Authority: The countdown is local presentation state only. It does not issue
+  a playback command, alter server clocks, or give the TV queue/host authority;
+  the official YouTube player and existing host/device authorization remain
+  unchanged.
+- Verification: TypeScript, lint, 54/54 unit checks, the optimized production
+  build, 18/18 focused desktop/mobile Chromium shell checks, WCAG A/AA scan,
+  overflow checks, and `git diff --check` pass. The public TV check waits for
+  remote-handler hydration and verifies arrow focus on both viewports.
+- Paired coverage: The authored paired-TV journey checks initial remote focus,
+  the disabled countdown action, transition to Start video, and Enter
+  activation. That database-mutating journey remains deferred until a
+  separately allowlisted hosted test project is configured.
+- Next exact action: Verify the remote key names, focus movement, countdown,
+  Back behavior, and autoplay recovery on the named physical smart-TV/browser
+  matrix; do not claim physical compatibility from Chromium emulation.
 
 ## Session handoff template
 

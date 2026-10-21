@@ -67,6 +67,41 @@ transaction writes. Queue and playback snapshots carry the pair to host, guest,
 and TV surfaces. Fair rotation derives one normalized unordered performer key
 for the pair, while the submitted name order remains intact for display.
 
+Guest permissions extend the protected `room_settings` row and are enforced at
+the queue, playback-command, reaction, and rating mutation boundaries. A host
+change increments the room queue version so connected phones reconcile their
+controls. Guest playback commands reuse the existing transactional mutation
+budget and never give the public room code host authority.
+
+Audience scores live in the RLS-protected `performance_ratings` table, with one
+server-written 1–5 star value per actor and queue item. Only the current or most
+recently completed (not skipped) performance is rateable. The API derives a
+room-scoped top-10 leaderboard grouped by performer; duet pairs share one
+performer identity. The paired TV has read-only access through its designated
+device session. Reactions are deliberately excluded from scoring.
+
+Party themes use three fixed design-token IDs. Outside a room, a versioned
+local preference is applied before first paint. Inside a room, the host-only
+theme route writes the checked `room_settings.party_theme` value and publishes
+the existing queue invalidation; queue snapshots update host/guest pages and
+playback snapshots update the paired TV. Room components restore the personal
+preference when they unmount. Public database roles retain no settings access,
+and arbitrary CSS is never accepted or stored.
+
+Phase 10 starts with a public `/compatibility` Server Component containing one
+small `BrowserReadiness` Client Component. Pure rules under
+`src/lib/compatibility/` classify secure-context, local-storage, WebSocket,
+MediaDevices, and Web Audio presence. The probe does not request permission,
+enumerate hardware, or send capability data to the server; static page content
+separately records verified and unverified device evidence.
+
+The Next.js response boundary applies HSTS, same-origin framing, MIME-sniffing
+protection, a strict-origin cross-site referrer policy, and a least-capability
+Permissions Policy to every route. Same-origin microphone access stays enabled
+for Microphone Studio. CSP remains a separate reviewed slice because the
+pre-paint theme bootstrap, YouTube IFrame API, image host, and Supabase Realtime
+connections need an explicit nonce and origin design.
+
 The future native track will reuse server-authoritative domain rules through
 authenticated APIs. Its big-screen handoff differs from today's pairing:
 the web display creates a single-use expiring QR claim, an authenticated host

@@ -1,9 +1,10 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Headphones, Mic2, MonitorPlay, QrCode, Radio, UsersRound } from "lucide-react";
+import { JoinForm } from "@/components/join-form";
 import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { StageIllustration } from "@/components/stage-illustration";
 
 const steps = [
   {
@@ -31,32 +32,38 @@ export default function HomePage() {
     <div className="page-shell">
       <SiteHeader />
       <main>
-        <section className="content-wrap grid items-center gap-12 py-16 md:grid-cols-[1.04fr_0.96fr] md:gap-14 md:py-24" aria-labelledby="hero-title">
-          <div>
+        <section className="content-wrap py-14 md:py-20" aria-labelledby="hero-title">
+          <div className="mx-auto max-w-4xl text-center">
             <p className="eyebrow">Karaoke, together</p>
-            <h1 id="hero-title" className="mt-7 max-w-2xl text-[clamp(3.7rem,8.4vw,7.3rem)] leading-[0.96] font-black tracking-[-0.075em]">
-              Your songs.<br />
-              <span className="text-gradient">Your stage.</span><br />
+            <h1 id="hero-title" className="mt-7 text-[clamp(3.5rem,8vw,7rem)] leading-[0.94] font-black tracking-[-0.075em]">
+              Your songs. <span className="text-gradient">Your stage.</span><br />
               Your party.
             </h1>
-            <p className="mt-8 max-w-lg text-lg leading-8 text-[#c9bec3]">
-              One screen for the performance. Every phone in on the fun.
-              MyKaraoke is bringing the whole room into the music.
-            </p>
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg" className="h-13 rounded-full bg-primary px-7 text-base font-bold shadow-[0_12px_40px_rgba(255,35,105,.25)] hover:bg-[#b91d50]">
-                <Link href="/host">Explore hosting <ArrowRight className="ml-1 size-5" aria-hidden="true" /></Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="h-13 rounded-full border-white/20 bg-white/4 px-7 text-base font-bold text-white hover:bg-white/10">
-                <Link href="/join">Explore joining</Link>
-              </Button>
-            </div>
-            <p className="mt-6 flex items-center gap-2 text-sm text-[#a99ca4]">
-              <Radio className="size-4 text-[#ffb33c]" aria-hidden="true" />
-              Rooms, shared songs, TV playback, and local Microphone Studio are live.
+            <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-[#c9bec3]">
+              Put the performance on the big screen, then let everyone use their phone to join the room and shape the queue.
             </p>
           </div>
-          <StageIllustration />
+
+          <div className="mx-auto mt-11 grid max-w-5xl items-stretch gap-4 md:grid-cols-2">
+            <article className="feature-panel flex min-h-full flex-col rounded-[1.75rem] p-6 sm:p-8" aria-labelledby="host-card-title">
+              <span className="grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-[#ffb91b] via-[#ff663e] to-[#f90082] shadow-[0_16px_44px_rgba(255,56,103,.2)]">
+                <Image src="/brand/microphone-logo.png" alt="" width={1402} height={1122} className="h-12 w-14 object-contain" priority />
+              </span>
+              <p className="eyebrow mt-7">On the big screen</p>
+              <h2 id="host-card-title" className="mt-3 text-3xl font-black tracking-[-0.045em]">Host a room</h2>
+              <p className="mt-3 max-w-md text-sm leading-7 text-muted-foreground">Create the party, share its code or QR, manage the queue, and pair a separate TV browser for playback.</p>
+              <Button asChild size="lg" className="mt-auto h-12 w-full rounded-xl pt-0 font-bold shadow-[0_12px_40px_rgba(255,35,105,.2)]">
+                <Link href="/host">Start a room <ArrowRight className="ml-1 size-5" aria-hidden="true" /></Link>
+              </Button>
+            </article>
+
+            <JoinForm variant="launch" />
+          </div>
+
+          <p className="mx-auto mt-6 flex max-w-5xl items-center justify-center gap-2 text-center text-sm text-[#a99ca4]">
+            <Radio className="size-4 shrink-0 text-[#ffb33c]" aria-hidden="true" />
+            Rooms, shared songs, TV playback, and local Microphone Studio are live.
+          </p>
         </section>
 
         <section id="how-it-works" className="content-wrap scroll-mt-24 py-16 md:py-24" aria-labelledby="how-title">
@@ -98,12 +105,12 @@ export default function HomePage() {
                 </h2>
                 <p className="mt-6 max-w-2xl text-base leading-8 text-muted-foreground">
                   A shared song queue, a clear TV view, and a dedicated microphone studio
-                  are on the roadmap. Each part will be released when it works across devices.
+                  keep every screen and singer connected to the same room.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3 text-xs font-semibold text-[#ead6da]">
                   <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">Phone friendly</span>
                   <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">TV focused</span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">Mic ready roadmap</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">Mic controls live</span>
                 </div>
               </div>
               <div className="flex gap-3 md:flex-col" aria-hidden="true">
