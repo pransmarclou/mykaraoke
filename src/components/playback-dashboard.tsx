@@ -14,7 +14,7 @@ async function readError(response: Response): Promise<string> {
   catch { return "Please try again."; }
 }
 
-export function PlaybackDashboard({ code, role, guestId, tvUrl }: { code: string; role: "host" | "guest"; guestId?: string; tvUrl?: string }) {
+export function PlaybackDashboard({ code, role, guestId, tvUrl, showTvSetup = true }: { code: string; role: "host" | "guest"; guestId?: string; tvUrl?: string; showTvSetup?: boolean }) {
   const [state, setState] = useState<PlaybackSnapshot | null>(null);
   const [pairCode, setPairCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,6 +23,13 @@ export function PlaybackDashboard({ code, role, guestId, tvUrl }: { code: string
   const pendingCommand = useRef<{ action: HostPlaybackAction; key: string } | null>(null);
   const canRemote = role === "host" || Boolean(state?.guestPermissions.playbackControl);
   const canReact = role === "host" || Boolean(state?.guestPermissions.reactions);
+  const microphoneRole = state?.current?.requestedBy
+    ? role === "host" && state.current.requestedBy !== guestId
+      ? "host"
+      : guestOwnsCurrentMicrophone(state.current.requestedBy, guestId)
+        ? "guest"
+        : null
+    : null;
 
   useEffect(() => {
     let active = true;
@@ -79,8 +86,8 @@ export function PlaybackDashboard({ code, role, guestId, tvUrl }: { code: string
     {!state && connection === "loading" ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading playback state…</p> : null}
     {state && connection !== "ended" ? <>
       {state.current ? <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4"><p className="text-xs font-bold uppercase tracking-wider text-[#ffc16f]">{state.observed === "playing" ? "Now playing" : "Current song"}</p><p className="mt-2 font-bold text-white">{state.current.title}</p><p className="mt-1 text-sm text-muted-foreground">Singer: {singerLabel(state.current)}</p><p className="mt-2 text-sm text-[#ffc16f]">Player: {state.observed}{state.observed === "error" ? ` (YouTube error ${state.errorCode ?? "unknown"})` : ""}</p></div> : <p className="mt-5 text-sm text-muted-foreground">No song is on stage yet.</p>}
-      {state.current?.requestedBy && (role === "host" || guestOwnsCurrentMicrophone(state.current.requestedBy, guestId))
-        ? <RemoteSingerMicrophone key={`${state.current.id}:${state.current.requestedBy}:${role}`} code={code} role={role} guestId={state.current.requestedBy} song={state.current} />
+      {state.current?.requestedBy && microphoneRole
+        ? <RemoteSingerMicrophone key={`${state.current.id}:${state.current.requestedBy}:${microphoneRole}`} code={code} role={microphoneRole} guestId={state.current.requestedBy} song={state.current} />
         : null}
       {state.next ? <p className="mt-4 text-sm text-muted-foreground">Up next: <span className="text-white">{state.next.title}</span> · {singerLabel(state.next)}</p> : null}
       {canReact ? <RoomReactions code={code} enabled={Boolean(state.current) && connection === "connected"} /> : <p className="mt-5 border-t border-white/10 pt-5 text-xs text-muted-foreground">The host has turned reactions off.</p>}
@@ -93,7 +100,7 @@ export function PlaybackDashboard({ code, role, guestId, tvUrl }: { code: string
           </>}
         </div>
       </div> : null}
-      {role === "host" ? <>
+      {role === "host" && showTvSetup ? <>
         <div className="mt-6 border-t border-white/10 pt-5"><Link href={tvUrl ?? `/tv/${code}`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-[#ffad69] underline underline-offset-4">Open TV page</Link><p className="mt-2 text-xs text-muted-foreground">On another screen, open this page and enter a pairing code. A room code alone cannot control playback.</p><button type="button" disabled={busy || connection !== "connected"} onClick={() => void pair()} className="queue-action mt-3">{pairCode ? "Generate new pairing code" : "Generate TV pairing code"}</button>
           {pairCode ? <p data-testid="tv-pair-code" className="mt-3 font-mono text-2xl font-black tracking-[0.2em] text-white">{pairCode}</p> : null}
         </div>

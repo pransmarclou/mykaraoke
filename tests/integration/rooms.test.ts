@@ -5,7 +5,7 @@ import { getDb } from "../../src/lib/db";
 import { makeRoomCode } from "../../src/lib/rooms/room-code";
 import { reserveRoomCreationSlot, reserveRoomJoinSlot, RoomCreationRateLimitError, RoomJoinRateLimitError } from "../../src/lib/rooms/rate-limit";
 import { cleanupExpiredRooms, closeHostRoom, createHostRoom, getActiveHostRoom } from "../../src/lib/rooms/repository";
-import { getActiveGuest, joinRoom, leaveRoom, roomAccess, roomParticipants, RoomJoinError, touchGuestPresence } from "../../src/lib/rooms/guests";
+import { getActiveGuest, joinRoom, leaveRoom, roomAccess, roomParticipants, RoomJoinError, touchGuestPresence, transferRoomHost } from "../../src/lib/rooms/guests";
 
 const createdRoomIds: string[] = [];
 const rateLimitKeys: Buffer[] = [];
@@ -84,18 +84,29 @@ test("guests join, receive stable scoped identities, distinguish duplicate names
   const secondRoom = await createHostRoom();
   createdRoomIds.push(firstRoom.room.id, secondRoom.room.id);
   const one = await joinRoom(firstRoom.room.code, "Alex", undefined);
+  assert.equal(one.guest.isHost, true);
   const repeated = await joinRoom(firstRoom.room.code, "Ignored", one.credential);
   assert.equal(repeated.reused, true);
   assert.equal(repeated.guest.id, one.guest.id);
   assert.equal(repeated.guest.label, "Alex");
+  assert.equal(repeated.guest.isHost, true);
   const two = await joinRoom(firstRoom.room.code, "Alex", undefined);
   assert.equal(two.guest.label, "Alex (2)");
+  assert.equal(two.guest.isHost, false);
   assert.equal((await getActiveGuest(firstRoom.room.code, one.credential))?.id, one.guest.id);
   assert.equal(await getActiveGuest(secondRoom.room.code, one.credential), null);
   assert.deepEqual(await roomAccess(firstRoom.room.code, firstRoom.credential, undefined), { roomId: firstRoom.room.id, role: "host", expiresAt: firstRoom.room.expiresAt });
-  assert.equal((await roomAccess(firstRoom.room.code, undefined, one.credential)).guestId, one.guest.id);
+  assert.deepEqual(await roomAccess(firstRoom.room.code, undefined, one.credential), { roomId: firstRoom.room.id, role: "host", guestId: one.guest.id, expiresAt: firstRoom.room.expiresAt });
   await assert.rejects(roomAccess(secondRoom.room.code, undefined, one.credential), /access denied/);
   assert.deepEqual((await roomParticipants(firstRoom.room.id)).map((person) => person.label), ["Alex", "Alex (2)"]);
+
+  await transferRoomHost(firstRoom.room.id, one.guest.id, two.guest.id);
+  assert.equal((await getActiveGuest(firstRoom.room.code, one.credential))?.isHost, false);
+  assert.equal((await getActiveGuest(firstRoom.room.code, two.credential))?.isHost, true);
+  assert.equal((await roomAccess(firstRoom.room.code, undefined, one.credential)).role, "guest");
+  assert.equal((await roomAccess(firstRoom.room.code, undefined, two.credential)).role, "host");
+  assert.deepEqual((await roomParticipants(firstRoom.room.id)).map((person) => [person.label, person.isHost]), [["Alex", false], ["Alex (2)", true]]);
+  await assert.rejects(transferRoomHost(firstRoom.room.id, one.guest.id, one.guest.id), (error: unknown) => error instanceof Error && error.message === "forbidden");
 
   await getDb().query("update public.room_presence set last_seen_at = now() - interval '31 seconds' where member_id = $1", [one.guest.id]);
   assert.equal((await roomParticipants(firstRoom.room.id)).find((person) => person.id === one.guest.id)?.online, false);

@@ -48,11 +48,12 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await guest.getByRole("textbox", { name: "Your display name" }).fill("Alex");
     await guest.getByRole("button", { name: "Join room" }).click();
     await expect(guest).toHaveURL(new RegExp(`/room/${code}$`), { timeout: 15_000 });
-    const forbidden = await guest.evaluate(async (roomCode) => {
+    await expect(guest.getByTestId("phone-host-badge")).toBeVisible();
+    const unready = await guest.evaluate(async (roomCode) => {
       const response = await fetch(`/api/rooms/${roomCode}/playback`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start", requestKey: crypto.randomUUID() }) });
       return response.status;
     }, code);
-    expect(forbidden).toBe(403);
+    expect(unready).toBe(409);
 
     const tv = await tvContext.newPage();
     await tv.route("https://www.youtube.com/iframe_api", (route) => route.fulfill({ status: 200, contentType: "application/javascript", body: fakeYouTubeApi }));
@@ -63,6 +64,7 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await tv.getByRole("textbox", { name: "TV pairing code" }).fill(pairCode);
     await tv.getByRole("button", { name: "Pair this display" }).click();
     await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible();
+    await expect(tv.getByTestId("tv-waiting-card")).toHaveClass(/bg-\[\#0b0d16\]\/35/);
     await expect(tv.getByRole("img", { name: `QR code to join room ${code}` })).toBeVisible();
     await expect(tv.getByRole("button", { name: "Enter fullscreen" })).toBeVisible();
     await expect(tv.getByRole("tab", { name: "Up next" })).toHaveAttribute("aria-selected", "true");
@@ -158,6 +160,26 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     if (roomId) await db.query("delete from public.rooms where id = $1", [roomId]);
     await db.query("delete from public.song_search_results where query = $1", [query]);
     await db.query("delete from public.song_search_cache where query = $1", [query]);
+    await db.end();
+  }
+});
+
+test("landing Start session provisions this browser as the TV without pairing", async ({ page }) => {
+  const db = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
+  let roomId: string | undefined;
+  try {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Start session" }).click();
+    await expect(page).toHaveURL(/\/tv\/[A-HJ-NP-Z2-9]{6}$/u, { timeout: 15_000 });
+    const code = new URL(page.url()).pathname.split("/").pop()!;
+    const room = await db.query<{ id: string }>("select id from public.rooms where code = $1", [code]);
+    roomId = room.rows[0]?.id;
+    await expect(page.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pair this display" })).toHaveCount(0);
+    const tvCookie = (await page.context().cookies()).find((cookie) => cookie.name === "mk_tv_session");
+    expect(tvCookie?.httpOnly).toBe(true);
+  } finally {
+    if (roomId) await db.query("delete from public.rooms where id = $1", [roomId]);
     await db.end();
   }
 });

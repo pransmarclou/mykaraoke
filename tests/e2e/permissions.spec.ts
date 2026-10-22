@@ -22,6 +22,7 @@ test("host turns a guest phone into a TV remote and can take it back", async ({ 
   const query = `permission fixture ${randomUUID().slice(0, 8)}`;
   const generation = randomUUID();
   const title = "Permission Fixture Remote";
+  const phoneHostContext = await browser.newContext();
   const guestContext = await browser.newContext();
   const tvContext = await browser.newContext();
   let roomId: string | undefined;
@@ -49,6 +50,13 @@ test("host turns a guest phone into a TV remote and can take it back", async ({ 
     await expect(waitingVideo.locator("source")).toHaveAttribute("src", "/media/tv-videoke-family-loop.mp4");
     expect(await waitingVideo.evaluate((video: HTMLVideoElement) => ({ muted: video.muted, loop: video.loop, controls: video.controls }))).toEqual({ muted: true, loop: true, controls: false });
 
+    const phoneHost = await phoneHostContext.newPage();
+    await phoneHost.goto(`/join?code=${code}`);
+    await phoneHost.getByRole("textbox", { name: "Your display name" }).fill("Party host");
+    await phoneHost.getByRole("button", { name: "Join room" }).click();
+    await expect(phoneHost.getByTestId("phone-host-badge")).toBeVisible({ timeout: 15_000 });
+    await phoneHost.getByRole("tab", { name: "Host" }).click();
+
     const guest = await guestContext.newPage();
     await guest.goto(`/join?code=${code}`);
     await guest.getByRole("textbox", { name: "Your display name" }).fill("Remote");
@@ -57,14 +65,14 @@ test("host turns a guest phone into a TV remote and can take it back", async ({ 
 
     // Defaults: guests can add songs and react, but have no remote.
     await expect(guest.getByTestId("playback-remote")).toHaveCount(0);
-    const permissions = page.getByTestId("guest-permissions");
-    await expect(permissions.getByRole("switch", { name: "Guest remote control" })).toHaveAttribute("aria-checked", "false");
+    const remotePermission = phoneHost.getByRole("switch", { name: /Remote control/u });
+    await expect(remotePermission).toHaveAttribute("aria-checked", "false");
     await guest.getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await guest.getByTestId("search-results").getByRole("button", { name: "Add" }).click();
     await expect(page.getByTestId("queue-item")).toHaveCount(1);
 
-    await permissions.getByRole("switch", { name: "Guest remote control" }).click();
-    await expect(permissions.getByRole("switch", { name: "Guest remote control" })).toHaveAttribute("aria-checked", "true");
+    await remotePermission.click();
+    await expect(remotePermission).toHaveAttribute("aria-checked", "true");
     await guest.getByRole("tab", { name: "Stage" }).click();
     await expect(guest.getByText("Your phone is a remote for the TV")).toBeVisible({ timeout: 10_000 });
     await guest.getByTestId("playback-remote").getByRole("button", { name: "Start next song" }).click();
@@ -74,7 +82,7 @@ test("host turns a guest phone into a TV remote and can take it back", async ({ 
     await guest.getByTestId("playback-remote").getByRole("button", { name: "Pause", exact: true }).click();
     await expect(tv.getByText("Player state: paused")).toBeVisible({ timeout: 10_000 });
 
-    await permissions.getByRole("switch", { name: "Guest remote control" }).click();
+    await remotePermission.click();
     await expect(guest.getByTestId("playback-remote")).toHaveCount(0, { timeout: 10_000 });
     const status = await guest.evaluate(async (roomCode) => (await fetch(`/api/rooms/${roomCode}/playback`, {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -82,7 +90,7 @@ test("host turns a guest phone into a TV remote and can take it back", async ({ 
     })).status, code);
     expect(status).toBe(403);
 
-    await permissions.getByRole("switch", { name: "Guest add songs" }).click();
+    await phoneHost.getByRole("switch", { name: /Add songs/u }).click();
     await expect(guest.getByText("The host has paused song requests from guests.")).toBeVisible({ timeout: 10_000 });
     await expect(guest.getByRole("searchbox", { name: "Search YouTube karaoke" })).toHaveCount(0);
 
@@ -91,6 +99,7 @@ test("host turns a guest phone into a TV remote and can take it back", async ({ 
     })).status, code);
     expect(hostStatus).toBe(403);
   } finally {
+    await phoneHostContext.close();
     await guestContext.close();
     await tvContext.close();
     if (roomId) await db.query("delete from public.rooms where id = $1", [roomId]);

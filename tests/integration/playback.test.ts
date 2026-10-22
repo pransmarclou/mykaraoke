@@ -6,7 +6,7 @@ import { RemoteMicError, sendRemoteMicSignal } from "../../src/lib/microphone/re
 import { joinRoom } from "../../src/lib/rooms/guests";
 import { createHostRoom } from "../../src/lib/rooms/repository";
 import { addQueueItem, queueSnapshot } from "../../src/lib/songs/queue";
-import { hostPlaybackCommand, issueTvPairCode, pairTv, playbackSnapshot, PlaybackError, tvPlayerEvent, tvRoomAccess } from "../../src/lib/playback/state";
+import { hostPlaybackCommand, issueTvPairCode, pairTv, playbackSnapshot, PlaybackError, provisionTv, tvPlayerEvent, tvRoomAccess } from "../../src/lib/playback/state";
 
 const rooms: string[] = [];
 const songs: string[] = [];
@@ -34,6 +34,14 @@ test("TV pairing uses a short-lived code and rotates device authority", async ()
   const second = await pairTv(host.room.code, await issueTvPairCode(host.room.id));
   assert.equal(await tvRoomAccess(host.room.code, first.credential), null);
   assert.equal(await tvRoomAccess(host.room.code, second.credential), host.room.id);
+});
+
+test("a host launch directly provisions its current browser as the TV", async () => {
+  const host = await createHostRoom(); rooms.push(host.room.id);
+  const tv = await provisionTv(host.room.id);
+  assert.equal(tv.autoStarted, false);
+  assert.equal(await tvRoomAccess(host.room.code, tv.credential), host.room.id);
+  assert.equal((await playbackSnapshot(host.room.id)).devicePaired, true);
 });
 
 test("pairing a display auto-cues an already saved room queue", async () => {

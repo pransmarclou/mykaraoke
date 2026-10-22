@@ -56,7 +56,7 @@ export default function HomePage() {
               </span>
               <p className="eyebrow mt-6">Lead the party</p>
               <h2 id="host-card-title" className="mt-3 text-3xl font-black tracking-[-0.045em]">Host a room</h2>
-              <p className="mt-3 max-w-lg text-sm leading-7 text-muted-foreground">Create or resume your secure room, share the code, and control the paired playback screen.</p>
+              <p className="mt-3 max-w-lg text-sm leading-7 text-muted-foreground">Open the TV stage instantly, share its code, and let the first phone to join lead the party.</p>
               <HostCreateForm available={roomCreationAvailable} variant="launch" />
             </article>
 

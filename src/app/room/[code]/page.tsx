@@ -20,6 +20,7 @@ export default async function GuestRoomPage({ params }: { params: Promise<{ code
   const cookieStore = await cookies();
   const guest = await getActiveGuest(code, cookieStore.get(GUEST_COOKIE_NAME)?.value);
   if (!guest) redirect(`/join?code=${code}`);
+  const role = guest.isHost ? "host" : "guest";
 
   return (
     <div className="page-shell flex min-h-screen flex-col">
@@ -28,9 +29,10 @@ export default async function GuestRoomPage({ params }: { params: Promise<{ code
           code={code}
           guestId={guest.id}
           guestLabel={guest.label}
-          stage={<PlaybackDashboard code={code} role="guest" guestId={guest.id} />}
+          role={role}
+          stage={<PlaybackDashboard code={code} role={role} guestId={guest.id} showTvSetup={false} />}
           scores={<RoomScores code={code} />}
-          people={<RoomParticipants code={code} guest />}
+          people={<RoomParticipants code={code} guest currentMemberId={guest.id} canTransferHost={guest.isHost} />}
         />
       </main>
       <SiteFooter />

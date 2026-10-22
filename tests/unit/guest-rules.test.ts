@@ -22,7 +22,7 @@ test("presence lease is alive before 30 seconds and away at the boundary", () =>
 });
 
 test("presence reducer retains the roster through interruption and clears it when room ends", () => {
-  const guest = { id: "guest-1", label: "Alex", online: true };
+  const guest = { id: "guest-1", label: "Alex", online: true, isHost: false };
   const loaded = presenceReducer({ participants: [], status: "loading" }, { type: "snapshot", participants: [guest] });
   assert.deepEqual(loaded, { participants: [guest], status: "connected" });
   const interrupted = presenceReducer(loaded, { type: "interrupted" });

@@ -86,6 +86,12 @@ test("host and two guests see the same roster, with refresh and brief offline re
       await expect(surface.getByTestId("participant").nth(0)).toContainText("Alex");
       await expect(surface.getByTestId("participant").nth(1)).toContainText("Alex (2)");
     }
+    await expect(first.getByTestId("phone-host-badge")).toBeVisible();
+    await expect(second.getByTestId("phone-host-badge")).toHaveCount(0);
+    await first.getByRole("tab", { name: "Host" }).click();
+    await first.getByRole("button", { name: "Make host" }).click();
+    await expect(first.getByTestId("phone-host-badge")).toHaveCount(0, { timeout: 10_000 });
+    await expect(second.getByTestId("phone-host-badge")).toBeVisible({ timeout: 10_000 });
     const guestCookie = (await firstContext.cookies()).find((cookie) => cookie.name === "mk_guest_session");
     expect(guestCookie?.httpOnly).toBe(true);
     expect(await first.evaluate(() => document.cookie.includes("mk_guest_session"))).toBe(false);

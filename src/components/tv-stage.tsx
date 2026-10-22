@@ -216,7 +216,7 @@ function WaitingStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }) 
         <source src="/media/tv-videoke-family-loop.mp4" type="video/mp4" />
       </video>
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(180deg,rgba(7,8,14,.34),rgba(7,8,14,.68)),radial-gradient(circle_at_50%_42%,transparent_0%,rgba(7,8,14,.4)_72%)]" aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-3xl rounded-[2rem] border border-white/15 bg-[#0b0d16]/85 p-7 text-center shadow-[0_30px_90px_rgba(0,0,0,.45)] backdrop-blur-xl sm:p-10">
+      <div className="relative z-10 w-full max-w-3xl rounded-[2rem] border border-white/20 bg-[#0b0d16]/35 p-7 text-center shadow-[0_30px_90px_rgba(0,0,0,.38)] backdrop-blur-[3px] sm:p-10" data-testid="tv-waiting-card">
         <p className="eyebrow">The room is open</p>
         <h1 id="tv-waiting-title" className="mt-4 text-[clamp(2.5rem,5vw,5rem)] leading-[0.94] font-black tracking-[-0.055em]">Waiting for songs…</h1>
         <p className="mx-auto mt-5 max-w-2xl text-[clamp(1rem,1.6vw,1.35rem)] leading-8 text-[#d8c8cf]">Scan the QR code or enter room <strong className="font-mono tracking-[0.14em] text-[#ffc16f]">{code}</strong> on your phone to join and add songs.</p>

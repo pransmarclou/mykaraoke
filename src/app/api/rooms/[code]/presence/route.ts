@@ -30,7 +30,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     const { code } = await params;
     if (!isValidRoomCode(code)) return NextResponse.json({ error: "Invalid room code." }, { status: 400 });
     const room = await access(code, true);
-    if (room.role !== "guest" || !room.guestId) return NextResponse.json({ error: "Guest access is required." }, { status: 403 });
+    if (!room.guestId) return NextResponse.json({ error: "Phone member access is required." }, { status: 403 });
     await touchGuestPresence(room.guestId);
     const participants = await roomParticipants(room.roomId);
     return NextResponse.json({ participants, expiresAt: room.expiresAt.toISOString() }, { headers: { "Cache-Control": "no-store" } });

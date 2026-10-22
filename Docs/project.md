@@ -16,7 +16,12 @@ from the named real-device evidence still required. Application-wide security
 and privacy response headers are implemented without disabling same-origin
 microphone capture; nonce-based CSP work remains open. The production HTTPS deployment is
 live; Phase 7's broad browser and real-device gate remains open. A
-host can create a 24-hour room and invite guests. Guests can join, search
+host can create a 24-hour room and invite guests. The landing-page Start
+session action provisions that browser as the designated TV and opens the TV
+stage directly; manually opened TV URLs retain secure pairing as a recovery
+path. The first active phone member atomically receives host authority, can
+transfer it to another active member, and the next active member succeeds a
+departing phone host. Guests can join, search
 server-verified YouTube metadata when an API key is configured, assign a singer,
 and add to a shared queue. Host-only order, skip, and remove actions are backed
 by transactions; Supabase Realtime invalidations plus snapshot polling keep
@@ -97,9 +102,12 @@ and real-device verification.
 
 ### Host
 
-Creates and administers a room, controls playback, manages the queue and
-participants, configures permissions, and manages microphones. Host authority
-must be backed by a secure session and server-side authorization.
+The first phone member becomes the active party host, controls playback,
+manages the queue and participants, configures permissions, and manages
+microphones. That member can transfer host authority to another active phone;
+authority changes are serialized by the database and backed by the member's
+private session rather than the public room code. The room creator's separate
+private browser credential remains a recovery boundary for the web MVP.
 
 ### Guest or singer
 
@@ -132,9 +140,11 @@ use mobile navigation or implicitly receive host authority.
 The installed iOS/Android app becomes the personal host/guest interface after
 the web MVP. It will use native camera, account recovery, microphone, and store
 purchase capabilities where approved. The web display remains a separate,
-low-privilege playback surface. The current host-generated code entered on
-`/tv/[code]` is a web-MVP pairing method; the app-scanned, display-generated
-QR is a later handoff flow, not an already implemented feature.
+low-privilege playback surface. For the web MVP, Start session directly
+provisions the current browser as the display; a temporary host-generated code
+remains available only as a recovery method for a separately opened TV URL.
+The app-scanned, display-generated QR is a later native handoff flow, not an
+already implemented feature.
 
 ## Planned routes
 
@@ -247,6 +257,10 @@ database grant. The app derives the leaderboard from these room-scoped rows.
 The checked `room_settings.party_theme` value is host-controlled and travels in
 authenticated queue and playback snapshots; arbitrary colors or CSS are not
 stored.
+The phone-host handoff slice adds `rooms.host_member_id`. Joining locks the
+room row so exactly one first active member claims phone-host authority;
+transfers and host departure use the same server-authorized, transactional
+boundary. The public room code never grants that role.
 
 ## UI and brand direction
 

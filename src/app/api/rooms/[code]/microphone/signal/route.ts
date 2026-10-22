@@ -15,7 +15,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     const access = await songRoomAccess(code);
     const signal = parseRemoteMicSignalRequest(await request.json().catch(() => null));
     if (!signal) return NextResponse.json({ error: "This microphone signal is invalid." }, { status: 400 });
-    const event = await sendRemoteMicSignal({ roomId: access.roomId, role: access.role, guestId: access.guestId, signal });
+    const phoneHostIsSinging = access.role === "host" && Boolean(access.guestId) && (
+      signal.kind === "offer" || signal.kind === "guest-stop" || (signal.kind === "candidate" && !signal.guestId)
+    );
+    const event = await sendRemoteMicSignal({ roomId: access.roomId, role: phoneHostIsSinging ? "guest" : access.role, guestId: access.guestId, signal });
     return NextResponse.json(event, { status: 202, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return remoteMicApiError(error, "Microphone signaling failed");

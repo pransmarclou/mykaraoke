@@ -15,6 +15,7 @@ type MemberRow = {
   code: string;
   display_name: string;
   name_number: number;
+  is_host: boolean;
 };
 
 export type GuestMembership = {
@@ -22,17 +23,18 @@ export type GuestMembership = {
   roomId: string;
   code: string;
   label: string;
+  isHost: boolean;
 };
 
 function membership(row: MemberRow): GuestMembership {
-  return { id: row.id, roomId: row.room_id, code: row.code, label: displayLabel(row.display_name, row.name_number) };
+  return { id: row.id, roomId: row.room_id, code: row.code, label: displayLabel(row.display_name, row.name_number), isHost: row.is_host };
 }
 
 export async function getActiveGuest(code: string, credential: string | undefined): Promise<GuestMembership | null> {
   const digest = credential ? credentialDigest(credential) : null;
   if (!digest) return null;
   const result = await getDb().query<MemberRow>(
-    `select m.id, m.room_id, r.code, m.display_name, m.name_number
+    `select m.id, m.room_id, r.code, m.display_name, m.name_number, coalesce(r.host_member_id = m.id, false) as is_host
        from public.room_members m join public.rooms r on r.id = m.room_id
       where r.code = $1 and m.credential_hash = $2 and m.left_at is null
         and r.status = 'open' and r.expires_at > now()
@@ -48,8 +50,8 @@ export async function joinRoom(code: string, displayName: string, previousCreden
   const client = await getDb().connect();
   try {
     await client.query("begin");
-    const roomResult = await client.query<{ id: string; status: string; expires_at: Date }>(
-      "select id, status, expires_at from public.rooms where code = $1 for update",
+    const roomResult = await client.query<{ id: string; status: string; expires_at: Date; host_member_id: string | null }>(
+      "select id, status, expires_at, host_member_id from public.rooms where code = $1 for update",
       [normalizedCode],
     );
     const room = roomResult.rows[0];
@@ -58,12 +60,16 @@ export async function joinRoom(code: string, displayName: string, previousCreden
 
     if (previousDigest) {
       const prior = await client.query<MemberRow>(
-        `select m.id, m.room_id, r.code, m.display_name, m.name_number
+        `select m.id, m.room_id, r.code, m.display_name, m.name_number, coalesce(r.host_member_id = m.id, false) as is_host
            from public.room_members m join public.rooms r on r.id = m.room_id
           where m.credential_hash = $1 and m.left_at is null limit 1`,
         [previousDigest],
       );
       if (prior.rows[0]?.room_id === room.id) {
+        if (!room.host_member_id) {
+          await client.query("update public.rooms set host_member_id = $2 where id = $1 and host_member_id is null", [room.id, prior.rows[0].id]);
+          prior.rows[0].is_host = true;
+        }
         await client.query(
           `insert into public.room_presence (member_id, last_seen_at) values ($1, now())
            on conflict (member_id) do update set last_seen_at = excluded.last_seen_at`,
@@ -89,13 +95,27 @@ export async function joinRoom(code: string, displayName: string, previousCreden
     const digest = credentialDigest(credential)!;
     const inserted = await client.query<MemberRow>(
       `insert into public.room_members (room_id, display_name, name_number, credential_hash)
-       values ($1, $2, $3, $4) returning id, room_id, display_name, name_number`,
+       values ($1, $2, $3, $4) returning id, room_id, display_name, name_number, false as is_host`,
       [room.id, displayName, numberResult.rows[0].next_number, digest],
     );
+    const claimedHost = await client.query(
+      "update public.rooms set host_member_id = $2 where id = $1 and host_member_id is null",
+      [room.id, inserted.rows[0].id],
+    );
+    inserted.rows[0].is_host = claimedHost.rowCount === 1;
     await client.query("insert into public.room_presence (member_id) values ($1)", [inserted.rows[0].id]);
     if (previousDigest) {
-      await client.query("update public.room_members set left_at = now() where credential_hash = $1 and left_at is null", [previousDigest]);
+      const departed = await client.query<{ id: string; room_id: string }>("update public.room_members set left_at = now() where credential_hash = $1 and left_at is null returning id, room_id", [previousDigest]);
       await client.query("delete from public.room_presence where member_id in (select id from public.room_members where credential_hash = $1)", [previousDigest]);
+      for (const prior of departed.rows) {
+        await client.query(
+          `update public.rooms r set host_member_id = (
+             select m.id from public.room_members m
+              where m.room_id = r.id and m.left_at is null order by m.joined_at, m.id limit 1
+           ) where r.id = $1 and r.host_member_id = $2`,
+          [prior.room_id, prior.id],
+        );
+      }
     }
     await client.query("delete from public.room_presence where last_seen_at < now() - interval '1 day'");
     await client.query("delete from public.room_join_limits where window_started_at < now() - interval '2 hours'");
@@ -111,8 +131,8 @@ export async function joinRoom(code: string, displayName: string, previousCreden
 
 export async function roomAccess(code: string, hostCredential: string | undefined, guestCredential: string | undefined): Promise<{ roomId: string; role: "host" | "guest"; guestId?: string; expiresAt: Date }> {
   const normalizedCode = normalizeRoomCode(code);
-  const roomResult = await getDb().query<{ id: string; status: string; expires_at: Date }>(
-    "select id, status, expires_at from public.rooms where code = $1",
+  const roomResult = await getDb().query<{ id: string; status: string; expires_at: Date; host_member_id: string | null }>(
+    "select id, status, expires_at, host_member_id from public.rooms where code = $1",
     [normalizedCode],
   );
   const room = roomResult.rows[0];
@@ -133,19 +153,45 @@ export async function roomAccess(code: string, hostCredential: string | undefine
       "select id from public.room_members where room_id = $1 and credential_hash = $2 and left_at is null limit 1",
       [room.id, guestDigest],
     );
-    if (guest.rows[0]) return { roomId: room.id, role: "guest", guestId: guest.rows[0].id, expiresAt: room.expires_at };
+    if (guest.rows[0]) return { roomId: room.id, role: room.host_member_id === guest.rows[0].id ? "host" : "guest", guestId: guest.rows[0].id, expiresAt: room.expires_at };
   }
   throw new Error("Room access denied");
 }
 
 export async function roomParticipants(roomId: string, now = new Date()): Promise<Participant[]> {
-  const result = await getDb().query<{ id: string; display_name: string; name_number: number; last_seen_at: Date | null }>(
-    `select m.id, m.display_name, m.name_number, p.last_seen_at
-       from public.room_members m left join public.room_presence p on p.member_id = m.id
+  const result = await getDb().query<{ id: string; display_name: string; name_number: number; last_seen_at: Date | null; is_host: boolean }>(
+    `select m.id, m.display_name, m.name_number, p.last_seen_at, coalesce(r.host_member_id = m.id, false) as is_host
+       from public.room_members m
+       join public.rooms r on r.id = m.room_id
+       left join public.room_presence p on p.member_id = m.id
       where m.room_id = $1 and m.left_at is null order by m.joined_at, m.id`,
     [roomId],
   );
-  return result.rows.map((row) => ({ id: row.id, label: displayLabel(row.display_name, row.name_number), online: isPresent(row.last_seen_at, now) }));
+  return result.rows.map((row) => ({ id: row.id, label: displayLabel(row.display_name, row.name_number), online: isPresent(row.last_seen_at, now), isHost: row.is_host }));
+}
+
+export class RoomHostError extends Error {
+  constructor(public readonly reason: "invalid" | "forbidden" | "missing") { super(reason); }
+}
+
+export async function transferRoomHost(roomId: string, actorMemberId: string | undefined, targetMemberId: string): Promise<void> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(targetMemberId)) throw new RoomHostError("invalid");
+  const client = await getDb().connect();
+  try {
+    await client.query("begin");
+    const room = await client.query<{ host_member_id: string | null }>("select host_member_id from public.rooms where id = $1 for update", [roomId]);
+    if (!room.rows[0]) throw new RoomHostError("missing");
+    if (actorMemberId && room.rows[0].host_member_id !== actorMemberId) throw new RoomHostError("forbidden");
+    const target = await client.query("select 1 from public.room_members where id = $1 and room_id = $2 and left_at is null", [targetMemberId, roomId]);
+    if (!target.rows[0]) throw new RoomHostError("missing");
+    await client.query("update public.rooms set host_member_id = $2 where id = $1", [roomId, targetMemberId]);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function touchGuestPresence(guestId: string): Promise<void> {
@@ -162,15 +208,24 @@ export async function leaveRoom(code: string, credential: string | undefined): P
   const client = await getDb().connect();
   try {
     await client.query("begin");
-    const result = await client.query<{ id: string }>(
-      `update public.room_members m set left_at = now()
-        from public.rooms r where r.id = m.room_id and r.code = $1
-          and m.credential_hash = $2 and m.left_at is null returning m.id`,
+    const member = await client.query<{ id: string; room_id: string; is_host: boolean }>(
+      `select m.id, m.room_id, coalesce(r.host_member_id = m.id, false) as is_host
+         from public.room_members m join public.rooms r on r.id = m.room_id
+        where r.code = $1 and m.credential_hash = $2 and m.left_at is null
+        for update of r, m`,
       [normalizeRoomCode(code), digest],
     );
-    if (result.rows[0]) await client.query("delete from public.room_presence where member_id = $1", [result.rows[0].id]);
+    const result = member.rows[0];
+    if (result) {
+      await client.query("update public.room_members set left_at = now() where id = $1", [result.id]);
+      await client.query("delete from public.room_presence where member_id = $1", [result.id]);
+      if (result.is_host) {
+        const successor = await client.query<{ id: string }>("select id from public.room_members where room_id = $1 and left_at is null order by joined_at, id limit 1", [result.room_id]);
+        await client.query("update public.rooms set host_member_id = $2 where id = $1", [result.room_id, successor.rows[0]?.id ?? null]);
+      }
+    }
     await client.query("commit");
-    return Boolean(result.rows[0]);
+    return Boolean(result);
   } catch (error) {
     await client.query("rollback");
     throw error;

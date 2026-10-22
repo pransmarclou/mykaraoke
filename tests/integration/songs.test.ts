@@ -74,7 +74,7 @@ test("host mutations require current version and stay isolated to a room", async
   const skipped = await mutateQueue({ roomId: host.room.id, id: moved.items[0].id, action: "skip", expectedVersion: moved.version });
   assert.equal(skipped.items.length, 1);
   assert.equal((await queueSnapshot(other.room.id)).items.length, 0);
-  assert.deepEqual(await roomAccess(host.room.code, undefined, guest.credential), { roomId: host.room.id, role: "guest", guestId: guest.guest.id, expiresAt: host.room.expiresAt });
+  assert.deepEqual(await roomAccess(host.room.code, undefined, guest.credential), { roomId: host.room.id, role: "host", guestId: guest.guest.id, expiresAt: host.room.expiresAt });
   await assert.rejects(roomAccess(other.room.code, undefined, guest.credential), /access denied/);
 });
 

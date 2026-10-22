@@ -1619,6 +1619,50 @@ test-project, browser/device, and audio-hardware matrices are completed.
   independently specified and tested. No implementation or database mutation
   was performed in this reconnaissance slice.
 
+## Phase 10 waiting-stage video visibility — 2026-10-22
+
+- Owner report: The large waiting-state card covered too much of the original
+  ambient family-videoke loop on the paired TV.
+- Completed: The waiting card now uses a 35% dark surface, a three-pixel blur,
+  and a slightly lighter border instead of the previous 85% surface with heavy
+  blur. The video remains visible through the card while the white heading,
+  room-code copy, and opaque QR tile retain their reading contrast.
+- Scope: Only the central waiting card changed. The video, stage vignette,
+  persistent join card, utility rail, and active-song layout are unchanged.
+- Coverage: The protected TV journey now identifies the card and asserts the
+  intended translucent surface class. Real living-room glare and QR distance
+  remain part of the physical TV acceptance matrix.
+
+## Phase 10 direct TV launch and phone-host handoff — 2026-10-22
+
+- Owner direction: Start session should open the TV stage immediately without
+  a pairing step. The first phone to join becomes host, sees host controls, and
+  can reassign host authority to another participant.
+- Implemented: the landing launch sends an explicit TV-display intent to the
+  room API. The server mints a designated-device credential for that browser,
+  stores only its digest, and redirects to `/tv/[code]`. The existing temporary
+  pairing path remains a recovery path for a TV URL opened on another browser.
+- Authority: additive migration `20261022200000_phone_host_handoff.sql` adds
+  `rooms.host_member_id` and backfills open rooms to their earliest active
+  member. Join, transfer, cross-room departure, and leave are transactional.
+  The first active member claims host atomically; a departing host hands off to
+  the earliest remaining active member. Room codes remain identifiers only.
+- Phone UI: the active member gets a Host badge plus playback and queue
+  authority. Its Host tab contains fair-rotation, theme, guest-permission,
+  participant, and reassignment controls. Phones poll their authorized role
+  and refresh after handoff. A
+  phone host can still use its own singer microphone; when another participant
+  is singing, the host receives the host-side mute/monitor controls.
+- Coverage added: integration assertions cover first-host claim, transfer,
+  authorization loss/gain, roster flags, direct TV provisioning, and device
+  authority. Playwright coverage now includes the no-pair landing launch,
+  phone-host badge/handoff, and an ordinary second-phone permission journey.
+- Local verification: TypeScript, ESLint, unit tests (65/65), and the optimized
+  Next.js production build pass. The protected hosted integration/Playwright
+  journeys were not run because they mutate room data and require the separate
+  allowlisted test project. The additive migration must be applied before
+  deploying code that reads `host_member_id`.
+
 ## Session handoff template
 
 Append a short entry after future work sessions:

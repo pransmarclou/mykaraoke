@@ -117,6 +117,39 @@ export async function issueTvPairCode(roomId: string): Promise<string> {
   finally { client.release(); }
 }
 
+export async function provisionTv(roomId: string): Promise<{ credential: string; expiresAt: Date; autoStarted: boolean }> {
+  const client = await getDb().connect();
+  try {
+    await client.query("begin");
+    const room = await client.query<{ status: string; expires_at: Date }>("select status, expires_at from public.rooms where id = $1 for update", [roomId]);
+    if (!room.rows[0] || room.rows[0].status !== "open" || room.rows[0].expires_at <= new Date()) throw new PlaybackError("ended");
+    await ensureState(client, roomId);
+    const credential = newHostCredential();
+    await client.query(
+      `update public.playback_state set device_hash = $2, device_seen_at = now(), pairing_hash = null,
+       pairing_expires_at = null, version = version + 1, updated_at = now() where room_id = $1`,
+      [roomId, credentialDigest(credential)],
+    );
+    const state = await stateForRoom(client, roomId);
+    const queued = await client.query<{ count: string }>(
+      "select count(*)::text as count from public.queue_items where room_id = $1 and status = 'queued'",
+      [roomId],
+    );
+    const autoStarted = shouldAutoCueAfterPair(state?.current_item_id ?? null, Number(queued.rows[0]?.count ?? 0));
+    if (autoStarted) {
+      await cueNext(client, roomId);
+      await publishQueueChange(client, roomId);
+    }
+    await client.query("commit");
+    return { credential, expiresAt: room.rows[0].expires_at, autoStarted };
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function pairTv(code: string, pairCode: string): Promise<{ credential: string; expiresAt: Date; autoStarted: boolean }> {
   if (!validPairCode(pairCode)) throw new PlaybackError("pair_invalid");
   const client = await getDb().connect();

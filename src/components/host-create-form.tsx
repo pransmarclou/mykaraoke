@@ -24,12 +24,13 @@ export function HostCreateForm({
     setPending(true);
     setError("");
     try {
-      const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ display: variant === "launch" ? "tv" : "host" }) });
       if (!response.ok) throw new Error("Room creation failed");
+      const { code } = await response.json() as { code: string };
       // The same action creates a new room or resumes this browser's active
       // host session. The fetch has already committed the HttpOnly cookie
       // before this navigation starts.
-      router.push("/host");
+      router.push(variant === "launch" ? `/tv/${code}` : "/host");
       router.refresh();
     } catch {
       setError("Could not create a room. Check the hosted service connection and try again.");

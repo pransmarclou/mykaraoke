@@ -2,18 +2,20 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Image from "next/image";
-import { Flame, Heart, ListMusic, MonitorPlay, Mic2, Search, Trophy, UserRound, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Crown, Flame, Heart, ListMusic, MonitorPlay, Mic2, Search, Settings2, Trophy, UserRound, X } from "lucide-react";
 import { GuestRoomActions } from "@/components/guest-room-actions";
 import { formatDuration, SongThumbnail } from "@/components/song-thumbnail";
 import { responseError, useRoomSongs } from "@/components/use-room-songs";
 import type { PlaybackSnapshot } from "@/lib/playback/state";
+import { GUEST_PERMISSIONS } from "@/lib/permissions/rules";
 import { ROOM_REACTIONS, type RoomReactionId } from "@/lib/reactions/rules";
 import type { PopularSong } from "@/lib/songs/popular";
 import { singerLabel } from "@/lib/songs/singers";
-import { getPartyTheme } from "@/lib/themes/rules";
+import { getPartyTheme, PARTY_THEMES } from "@/lib/themes/rules";
 
-type TabId = "popular" | "queue" | "stage" | "scores" | "mine" | "favorites";
-const TABS: { id: TabId; label: string; icon: typeof Flame }[] = [
+type TabId = "popular" | "queue" | "stage" | "scores" | "mine" | "favorites" | "host";
+const BASE_TABS: { id: TabId; label: string; icon: typeof Flame }[] = [
   { id: "popular", label: "Popular", icon: Flame },
   { id: "queue", label: "Queue", icon: ListMusic },
   { id: "stage", label: "Stage", icon: MonitorPlay },
@@ -26,6 +28,7 @@ type GuestPhoneRoomProps = {
   code: string;
   guestId: string;
   guestLabel: string;
+  role: "host" | "guest";
   stage: ReactNode;
   scores: ReactNode;
   people: ReactNode;
@@ -88,13 +91,14 @@ function ReactionButton({ code, enabled }: { code: string; enabled: boolean }) {
   </div>;
 }
 
-export function GuestPhoneRoom({ code, guestId, guestLabel, stage, scores, people }: GuestPhoneRoomProps) {
-  const songs = useRoomSongs({ code, role: "guest", singer: guestLabel });
+export function GuestPhoneRoom({ code, guestId, guestLabel, role, stage, scores, people }: GuestPhoneRoomProps) {
+  const router = useRouter();
+  const songs = useRoomSongs({ code, role, singer: guestLabel });
   const {
     queue, queueState, queueMessage, query, setQuery, searchState, setSearchState,
     singerName, setSingerName, duetEnabled, setDuetEnabled, duetSingerName, setDuetSingerName,
     favorites, workingId, canAssignSingers, canAddSongs, canManageQueue,
-    add, toggleFavorite, addFavorite, addByLookup, change,
+    add, toggleFavorite, addFavorite, addByLookup, change, toggleFairRotation, toggleGuestPermission, changePartyTheme,
   } = songs;
   const playback = usePlaybackSnapshot(code);
   const [tab, setTab] = useState<TabId>("popular");
@@ -105,6 +109,21 @@ export function GuestPhoneRoom({ code, guestId, guestLabel, stage, scores, peopl
   const mine = queue.items.filter((item) => item.requestedBy === guestId);
   const current = playback?.current ?? null;
   const reactionsEnabled = Boolean(current) && (playback?.guestPermissions.reactions ?? false);
+  const tabs = role === "host" ? [...BASE_TABS, { id: "host" as const, label: "Host", icon: Settings2 }] : BASE_TABS;
+
+  useEffect(() => {
+    let active = true;
+    async function refreshRole() {
+      try {
+        const response = await fetch(`/api/rooms/${code}/role`, { cache: "no-store" });
+        if (!response.ok) return;
+        const current = await response.json() as { role: "host" | "guest"; memberId: string | null };
+        if (active && current.memberId === guestId && current.role !== role) router.refresh();
+      } catch { /* Queue and presence polling surface connection failures. */ }
+    }
+    const timer = window.setInterval(() => void refreshRole(), 4_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [code, guestId, role, router]);
 
   const popularRequested = useRef(false);
   useEffect(() => {
@@ -130,11 +149,11 @@ export function GuestPhoneRoom({ code, guestId, guestLabel, stage, scores, peopl
   }
 
   function onTabKey(event: KeyboardEvent<HTMLButtonElement>) {
-    const index = TABS.findIndex((item) => item.id === tab);
-    const next = event.key === "ArrowRight" ? index + 1 : event.key === "ArrowLeft" ? index - 1 : event.key === "Home" ? 0 : event.key === "End" ? TABS.length - 1 : null;
+    const index = tabs.findIndex((item) => item.id === tab);
+    const next = event.key === "ArrowRight" ? index + 1 : event.key === "ArrowLeft" ? index - 1 : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : null;
     if (next === null) return;
     event.preventDefault();
-    selectTab(TABS[(next + TABS.length) % TABS.length].id);
+    selectTab(tabs[(next + tabs.length) % tabs.length].id);
   }
 
   const addDisabled = workingId !== null || !canAssignSingers || queueState !== "connected";
@@ -145,6 +164,7 @@ export function GuestPhoneRoom({ code, guestId, guestLabel, stage, scores, peopl
       <Image src="/brand/microphone-logo.png" alt="MyKaraoke" width={32} height={32} className="size-8 shrink-0" />
       <p className="min-w-0 flex-1 text-sm font-bold text-muted-foreground">Room <span className="font-mono text-base font-black tracking-wider text-accent">{code}</span></p>
       <span className="flex max-w-[8.5rem] items-center gap-1 truncate rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white"><UserRound className="size-4 shrink-0" aria-hidden="true" /><span className="truncate">{guestLabel}</span></span>
+      {role === "host" ? <span data-testid="phone-host-badge" className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-1 text-xs font-black text-accent"><Crown className="size-3.5" aria-hidden="true" />Host</span> : null}
       <GuestRoomActions code={code} compact />
     </header>
 
@@ -194,7 +214,7 @@ export function GuestPhoneRoom({ code, guestId, guestLabel, stage, scores, peopl
     </button>
 
     <div role="tablist" aria-label="Room sections" className="mt-5 -mx-4 flex gap-1 overflow-x-auto border-b border-white/10 px-4 [scrollbar-width:none]">
-      {TABS.map(({ id, label, icon: Icon }) => <button key={id} ref={(node) => { if (node) tabRefs.current.set(id, node); }} type="button" role="tab" id={`guest-tab-${id}`} aria-controls={`guest-panel-${id}`} aria-selected={tab === id} tabIndex={tab === id ? 0 : -1} onKeyDown={onTabKey} onClick={() => setTab(id)} className={`flex min-h-12 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm font-bold transition ${tab === id ? "border-primary text-white" : "border-transparent text-muted-foreground hover:text-white"}`}>
+      {tabs.map(({ id, label, icon: Icon }) => <button key={id} ref={(node) => { if (node) tabRefs.current.set(id, node); }} type="button" role="tab" id={`guest-tab-${id}`} aria-controls={`guest-panel-${id}`} aria-selected={tab === id} tabIndex={tab === id ? 0 : -1} onKeyDown={onTabKey} onClick={() => setTab(id)} className={`flex min-h-12 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm font-bold transition ${tab === id ? "border-primary text-white" : "border-transparent text-muted-foreground hover:text-white"}`}>
         <Icon className="size-4" aria-hidden="true" />{label}{id === "queue" && queue.items.length ? <span className="rounded-full bg-white/10 px-1.5 text-xs">{queue.items.length}</span> : null}
       </button>)}
     </div>
@@ -232,7 +252,7 @@ export function GuestPhoneRoom({ code, guestId, guestLabel, stage, scores, peopl
     <div role="tabpanel" id="guest-panel-stage" aria-labelledby="guest-tab-stage" hidden={tab !== "stage"} className="space-y-5 pt-4">
       {stage}
       {queueState === "connected" ? <p className="text-xs text-muted-foreground">Party theme: The host selected {getPartyTheme(queue.partyTheme).label}.</p> : null}
-      {people}
+      {role === "guest" ? people : null}
     </div>
 
     <div role="tabpanel" id="guest-panel-scores" aria-labelledby="guest-tab-scores" hidden={tab !== "scores"} className="pt-4">{scores}</div>
@@ -254,6 +274,26 @@ export function GuestPhoneRoom({ code, guestId, guestLabel, stage, scores, peopl
         {canAddSongs ? addButton(`Add ${favorite.title}`, () => void addFavorite(favorite), workingId === `favorite:${favorite.youtubeId}`) : null}
       </li>)}</ul>}
     </div>
+
+    {role === "host" ? <div role="tabpanel" id="guest-panel-host" aria-labelledby="guest-tab-host" hidden={tab !== "host"} className="space-y-5 pt-4">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+        <h2 className="flex items-center gap-2 text-lg font-black"><Crown className="size-5 text-accent" aria-hidden="true" />Host controls</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Manage the party from this phone. Transfer host access in the people list below.</p>
+      </section>
+      <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5" aria-labelledby="phone-host-theme">
+        <h3 id="phone-host-theme" className="font-black">Room theme</h3>
+        <div className="mt-3 grid grid-cols-3 gap-2">{PARTY_THEMES.map((theme) => <button key={theme.id} type="button" aria-pressed={queue.partyTheme === theme.id} disabled={workingId !== null} onClick={() => void changePartyTheme(theme.id)} className={`min-h-12 rounded-xl border px-2 text-xs font-bold ${queue.partyTheme === theme.id ? "border-accent bg-accent/15 text-white" : "border-white/10 bg-white/5 text-muted-foreground"}`}><span className="mx-auto mb-1 block size-3 rounded-full" style={{ backgroundColor: theme.swatch }} />{theme.label}</button>)}</div>
+      </section>
+      <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5" aria-labelledby="phone-host-queue">
+        <h3 id="phone-host-queue" className="font-black">Queue rules</h3>
+        <button type="button" role="switch" aria-checked={queue.fairRotation} disabled={workingId !== null} onClick={() => void toggleFairRotation()} className="mt-3 flex min-h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 text-left text-sm font-semibold"><span><span className="block">Fair singer rotation</span><span className="block text-xs font-normal text-muted-foreground">Alternate singers when possible</span></span><span className={`h-6 w-11 rounded-full p-1 ${queue.fairRotation ? "bg-primary" : "bg-white/15"}`}><span className={`block size-4 rounded-full bg-white transition ${queue.fairRotation ? "translate-x-5" : ""}`} /></span></button>
+      </section>
+      <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5" aria-labelledby="phone-host-permissions">
+        <h3 id="phone-host-permissions" className="font-black">Guest permissions</h3>
+        <div className="mt-3 space-y-2">{GUEST_PERMISSIONS.map((permission) => <button key={permission.id} type="button" role="switch" aria-checked={queue.guestPermissions[permission.id]} disabled={workingId !== null} onClick={() => void toggleGuestPermission(permission.id)} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-left"><span><span className="block text-sm font-semibold">{permission.label}</span><span className="block text-xs text-muted-foreground">{permission.description}</span></span><span className={`h-6 w-11 shrink-0 rounded-full p-1 ${queue.guestPermissions[permission.id] ? "bg-primary" : "bg-white/15"}`}><span className={`block size-4 rounded-full bg-white transition ${queue.guestPermissions[permission.id] ? "translate-x-5" : ""}`} /></span></button>)}</div>
+      </section>
+      {people}
+    </div> : null}
 
     {reactionsEnabled || current ? <ReactionButton code={code} enabled={reactionsEnabled} /> : null}
   </div>;

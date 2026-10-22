@@ -198,7 +198,9 @@ refresh or briefly disconnect, and receive clear invalid/expired-room errors.
 - Implement participant presence separately from durable membership.
 - Show host and guest participant lists according to permissions.
 - Handle leave, refresh, reconnect, room expiry, and stale presence.
-- Add a documented initial host-departure strategy.
+- Make the first active phone member the host, allow that host to transfer the
+  role to another active member, and assign the next active member when the
+  phone host leaves. Keep the public room code separate from host authority.
 
 ### Tests and verification
 
@@ -264,6 +266,9 @@ advance, while guests see current and upcoming performers.
 ### Scope
 
 - Add `playback_state` and a designated playback-device/session model.
+- Let the primary landing-page Start session action provision the current
+  browser as the TV and navigate directly to its stage; retain temporary
+  pairing only as a recovery path for a separately opened display URL.
 - Integrate the official YouTube IFrame Player API.
 - Implement explicit playback activation for autoplay-restricted browsers.
 - Implement idempotent host play/pause/skip commands and queue advancement.

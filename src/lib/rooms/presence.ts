@@ -4,6 +4,7 @@ export type Participant = {
   id: string;
   label: string;
   online: boolean;
+  isHost: boolean;
 };
 
 export type PresenceView = {
