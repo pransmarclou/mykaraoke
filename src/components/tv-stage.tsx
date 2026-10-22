@@ -12,6 +12,8 @@ import { singerLabel } from "@/lib/songs/singers";
 import { youtubeThumbnailUrl } from "@/lib/songs/thumbnail";
 import type { SongResult } from "@/lib/songs/youtube";
 import { RoomScores } from "@/components/room-scores";
+import { PartyNotificationToasts } from "@/components/party-notification-toasts";
+import { parsePartyNotification, type PartyNotification } from "@/lib/rooms/notification-rules";
 import {
   shouldShowTvSongStartNotice,
   SINGER_COUNTDOWN_SECONDS,
@@ -338,6 +340,7 @@ export function TvStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }
   const [message, setMessage] = useState("");
   const [ended, setEnded] = useState(false);
   const [reactions, setReactions] = useState<RoomReactionEvent[]>([]);
+  const [partyNotifications, setPartyNotifications] = useState<PartyNotification[]>([]);
   const [fullscreen, setFullscreen] = useState(false);
   const [startNotice, setStartNotice] = useState<TvStartNotice | null>(null);
   const [autoActivate] = useState(() => {
@@ -347,6 +350,7 @@ export function TvStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }
   });
   const endedRef = useRef(false);
   const reactionTimers = useRef(new Map<string, number>());
+  const notificationTimers = useRef(new Map<string, number>());
   const observedCurrentRef = useRef<{ initialized: boolean; id: string | null }>({ initialized: false, id: null });
   const startNoticeTimerRef = useRef<number | undefined>(undefined);
   const handleRemoteBack = useCallback(() => {
@@ -457,6 +461,18 @@ export function TvStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }
       reactionTimers.current.set(event.id, timer);
     }
 
+    function showPartyNotification(value: unknown) {
+      const event = parsePartyNotification(value);
+      if (!event || endedRef.current) return;
+      setPartyNotifications((current) => current.some((item) => item.id === event.id) ? current : [...current.slice(-2), event]);
+      const existing = notificationTimers.current.get(event.id);
+      if (existing) window.clearTimeout(existing);
+      notificationTimers.current.set(event.id, window.setTimeout(() => {
+        notificationTimers.current.delete(event.id);
+        setPartyNotifications((current) => current.filter((item) => item.id !== event.id));
+      }, 4_500));
+    }
+
     function scheduleRetry() {
       if (!active || endedRef.current || retryTimer !== undefined) return;
       const delay = Math.min(30_000, 1_000 * 2 ** Math.min(retryCount++, 5));
@@ -483,6 +499,7 @@ export function TvStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }
         }
         const nextChannel = nextClient.channel(config.topic, { config: { private: true } })
           .on("broadcast", { event: "reaction" }, (message) => showReaction(message.payload))
+          .on("broadcast", { event: "party_notification" }, (message) => showPartyNotification(message.payload))
           .subscribe((status) => {
             if (status === "SUBSCRIBED") retryCount = 0;
             else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status) && channel === nextChannel) {
@@ -504,17 +521,21 @@ export function TvStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }
     const online = () => { if (!channel) { if (retryTimer) window.clearTimeout(retryTimer); retryTimer = undefined; void subscribe(); } };
     window.addEventListener("online", online);
     const timers = reactionTimers.current;
+    const noticeTimers = notificationTimers.current;
     return () => {
       active = false;
       if (retryTimer) window.clearTimeout(retryTimer);
       window.removeEventListener("online", online);
       for (const timer of timers.values()) window.clearTimeout(timer);
       timers.clear();
+      for (const timer of noticeTimers.values()) window.clearTimeout(timer);
+      noticeTimers.clear();
       if (client && channel) { void client.removeChannel(channel); void client.realtime.disconnect(); }
     };
   }, [code]);
 
   return <main className="mx-auto flex min-h-screen max-w-[120rem] flex-col px-5 py-5 sm:px-8 lg:px-10">
+    <PartyNotificationToasts events={partyNotifications} />
     <header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 pb-4 md:grid-cols-[auto_minmax(0,1fr)_auto] md:gap-4" data-testid="tv-stage-header">
       <Image src="/brand/mykaraoke-wordmark.png" alt="MyKaraoke" width={2172} height={724} className="h-auto w-36 rounded-xl bg-[#fff2e5] p-2 object-contain sm:w-44 md:w-56" priority data-testid="tv-stage-logo" />
       <div className="col-span-2 min-w-0 md:col-span-1"><TvStageBanner code={code} notice={startNotice} /></div>

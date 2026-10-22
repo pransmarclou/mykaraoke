@@ -28,6 +28,7 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
   const generation = randomUUID();
   const titles = ["Arthur Nery - Binni (Karaoke/Acoustic Instrumental Version)", "Playback Fixture Beta"];
   const guestContext = await browser.newContext();
+  const audienceContext = await browser.newContext();
   const tvContext = await browser.newContext();
   let roomId: string | undefined;
   try {
@@ -97,13 +98,23 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     expect(tvCookie?.httpOnly).toBe(true);
     expect(await tv.evaluate(() => document.cookie.includes("mk_tv_session"))).toBe(false);
 
+    const audience = await audienceContext.newPage();
+    await audience.goto(`/join?code=${code}`);
+    await audience.getByRole("textbox", { name: "Your display name" }).fill("Sam");
+    await audience.getByRole("button", { name: "Join room" }).click();
+    await expect(audience).toHaveURL(new RegExp(`/room/${code}$`), { timeout: 15_000 });
+    await expect(guest.getByTestId("party-notification").filter({ hasText: "Sam joined the room." })).toBeVisible();
+    await expect(tv.getByTestId("party-notification").filter({ hasText: "Sam joined the room." })).toBeVisible();
+
     await guest.getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await expect(guest.getByTestId("search-results").getByText(titles[0])).toBeVisible();
     await guest.getByTestId("search-results").getByRole("button", { name: "Add" }).first().click();
-    await guest.getByTestId("search-results").getByRole("button", { name: "Add" }).nth(1).click();
-    await expect(page.getByTestId("queue-item")).toHaveCount(2);
-    await page.getByRole("button", { name: "Start next song" }).click();
+    await expect(guest.getByText(`${titles[0]} is starting on the TV.`)).toBeVisible();
+    await expect(page.getByTestId("party-notification").filter({ hasText: `Alex added ${titles[0]}. It is starting now.` })).toBeVisible();
+    await expect(tv.getByTestId("party-notification").filter({ hasText: `Alex added ${titles[0]}. It is starting now.` })).toBeVisible();
     await expect(tv.getByRole("heading", { name: titles[0] })).toBeVisible({ timeout: 10_000 });
+    await guest.getByTestId("search-results").getByRole("button", { name: "Add" }).nth(1).click();
+    await expect(page.getByTestId("queue-item")).toHaveCount(1);
     await expect(tv.getByTestId("tv-song-start-notice")).toContainText(`Now starting${titles[0]} · Alex`);
     await expect(tv.getByRole("img", { name: `Compact QR code to join room ${code}` })).toBeVisible();
     await expect(tv.getByTestId("tv-queue-item")).toHaveCount(1);
@@ -156,6 +167,7 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible({ timeout: 10_000 });
   } finally {
     await guestContext.close();
+    await audienceContext.close();
     await tvContext.close();
     if (roomId) await db.query("delete from public.rooms where id = $1", [roomId]);
     await db.query("delete from public.song_search_results where query = $1", [query]);
@@ -225,9 +237,8 @@ test("two guests and a TV recover from reloads and network loss, then stop when 
     await guests[0].getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await expect(guests[0].getByText("Lifecycle Fixture Song")).toBeVisible();
     await guests[0].getByRole("button", { name: "Add" }).click();
-    await expect(guests[0].getByText("Lifecycle Fixture Song added to the queue.")).toBeVisible({ timeout: 30_000 });
-    await expect(guests[1].getByTestId("queue-item")).toHaveCount(1);
-    await page.getByRole("button", { name: "Start next song" }).click();
+    await expect(guests[0].getByText("Lifecycle Fixture Song is starting on the TV.")).toBeVisible({ timeout: 30_000 });
+    await expect(guests[1].getByTestId("queue-item")).toHaveCount(0);
     await expect(tv.getByRole("heading", { name: "Lifecycle Fixture Song" })).toBeVisible();
     await expect(guests[0].getByTestId("remote-mic-guest")).toBeVisible();
     await expect(guests[1].getByTestId("remote-mic-guest")).toHaveCount(0);

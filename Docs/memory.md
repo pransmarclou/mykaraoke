@@ -1663,6 +1663,64 @@ test-project, browser/device, and audio-hardware matrices are completed.
   allowlisted test project. The additive migration must be applied before
   deploying code that reads `host_member_id`.
 
+## Phase 10 immediate first-song start — 2026-10-22
+
+- Owner direction: Once a user adds a song, start it immediately.
+- Implemented: queue insertion now atomically promotes the first waiting song
+  to the current TV item when the room has an authorized playback device and
+  no song is already on stage. The same room transaction serializes concurrent
+  additions, so later requests remain queued and cannot interrupt the singer.
+- Recovery behavior: Rooms without a designated TV keep additions queued. The
+  existing TV provision/pair flow still auto-cues that saved queue when a
+  display later becomes authorized, and manual Start remains a fallback.
+- Phone feedback: The requester sees that the song is starting on the TV when
+  it claimed the idle stage; otherwise the existing added-to-queue message is
+  retained.
+- Coverage: Unit decision coverage, hosted integration assertions, and affected
+  host/guest/TV Playwright journeys were updated. TypeScript, ESLint, all 66
+  unit checks, and the optimized production build pass. Database-mutating
+  suites stay gated on the separately allowlisted hosted test project.
+
+## Phase 10 live party notifications — 2026-10-22
+
+- Owner direction: Show a notification when another user joins the room and
+  when a user adds a new song.
+- Implemented: Successful new joins and non-replayed queue additions publish a
+  typed `party_notification` event on the room's existing private Realtime
+  topic. Existing members and the designated TV see short top-right notices;
+  the phone that added a song filters its own duplicate notice.
+- Copy: Join notices use the member's room display label. Song notices name the
+  requester and title, and distinguish a first song promoted directly to the
+  stage from a later song that remains queued.
+- Safety/accessibility: Payloads are bounded and validated, only three notices
+  can remain visible, each expires after 4.5 seconds, reduced motion disables
+  the entrance animation, and the notice region is announced politely. Events
+  are transient and not stored as activity history.
+- Verification: TypeScript, ESLint, all 68 unit checks, and the optimized
+  production build pass. The protected multi-browser test now covers both join
+  and song notices but remains unrun without the allowlisted hosted test
+  project.
+
+## Phase 10 phone-host settings parity — 2026-10-22
+
+- Owner direction: The active phone host should see the previous host settings
+  after first-member host assignment or reassignment.
+- Implemented: The phone Host tab now presents the room theme, fair rotation,
+  guest permissions, participant/host reassignment controls, and the complete
+  local Microphone Studio. It also provides direct shortcuts to the dedicated
+  queue, scores, and TV/playback tabs so those active controls are not
+  duplicated into competing client instances.
+- TV recovery: The active phone host can again open the TV page and generate a
+  temporary pairing code for a separately opened display. Ordinary guests do
+  not receive the Host tab or TV setup controls.
+- Authority boundary: Closing the room remains intentionally restricted to the
+  original room creator's private browser credential; automatic phone-host
+  authority does not expose that destructive recovery action.
+- Verification: TypeScript, ESLint, all 68 unit checks, and the optimized
+  production build pass. The protected multi-browser room journey now asserts
+  phone-host settings and guest exclusion, but was not run because it mutates
+  hosted room data and requires the separately allowlisted test project.
+
 ## Session handoff template
 
 Append a short entry after future work sessions:

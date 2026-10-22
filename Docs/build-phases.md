@@ -271,6 +271,8 @@ advance, while guests see current and upcoming performers.
   pairing only as a recovery path for a separately opened display URL.
 - Integrate the official YouTube IFrame Player API.
 - Implement explicit playback activation for autoplay-restricted browsers.
+- Atomically start the first newly added song when the designated TV is ready
+  and idle; keep later additions queued behind the current singer.
 - Implement idempotent host play/pause/skip commands and queue advancement.
 - Persist server timestamps and player intent without pretending every client
   clock is authoritative.
@@ -453,12 +455,19 @@ the TV observes a current-song transition. An owner-requested experimental
 slice also lets the guest who requested the current song explicitly share phone
 microphone audio to the host browser over WebRTC, with separate guest and host
 mute controls; real-device/network acceptance remains open.
+The active phone host now retains the complete web host toolset after automatic
+first-member assignment and host transfer: room theme, rotation and guest
+permissions, participant reassignment, local Microphone Studio, queue and score
+shortcuts, playback controls, and secure TV-pairing recovery. Room closure
+remains intentionally bound to the room creator's separate private credential.
 The landing surface now uses an original full-height performance hero with
 immediate Host and Join actions. Starting there creates or resumes this
 browser's active host room in one action. When a newly paired TV finds a queue
-already present in that room, pairing atomically cues the first item and the
-display attempts playback after the singer countdown, preserving a visible
-manual action when browser autoplay policy blocks it. This does not yet restore
+already present in that room, pairing atomically cues the first item. When the
+TV is already designated and idle, the first song added from a phone or host
+surface is atomically promoted to the stage; subsequent requests remain up
+next. The display attempts playback after the singer countdown, preserving a
+visible manual action when browser autoplay policy blocks it. This does not yet restore
 a queue from a cross-device account: optional account identity and queue sync
 remain an explicit Phase 9 follow-up rather than a completed claim.
 
@@ -716,7 +725,7 @@ Update this table only with evidence, never optimism.
 | 7 | IMPLEMENTED, VERIFICATION PENDING | Unit 15/15, integration 18/18, lint/typecheck/DB lint, production build, isolated desktop/mobile four-session journeys, hosted create/persist/authorized-close smoke, and 25 non-mutating production shell checks passed 2026-10-19; Firefox is blocked before navigation by the documented macOS 27 runner issue | Production HTTPS is Ready and real Safari host/reload checks passed; separate hosted test project, Firefox coverage, physical phone, and TV-browser checks remain | Owner review pending |
 | 8 | IMPLEMENTED, VERIFICATION PENDING | Unit 19/19, lint/typecheck/build, and focused desktop/mobile microphone recovery journeys passed | Real Safari verified MacBook Pro and USB EarPods input selection, switching, activity, mute, and an owner-confirmed audible five-second 9% monitor state routed to EarPods; separate latency characterization, disconnect/recovery, Windows, and Bluetooth checks remain | Owner review pending |
 | 9 | IMPLEMENTED, VERIFICATION PENDING | 48 unit checks cover favorites, reactions, rotation, duets, guest permissions, ratings/leaderboard, and theme rules; 12 focused desktop/mobile shell checks cover personal theme persistence, responsive layout, and WCAG A/AA; room-theme integration and host/guest/TV tests are authored but blocked without the allowlisted hosted test project | All three themes visually reviewed; hosted schema columns confirmed read-only; combined browser interaction, migration-history reconciliation, and physical TV verification remain open | Owner directed the next phase while deferring the combined gate, 2026-10-20 |
-| 10 | IN BUILD | TypeScript, lint, 60/60 unit checks, optimized build, and 20/20 focused desktop/mobile Chromium shell checks pass; requester/host microphone authorization integration coverage is authored but gated on the dedicated hosted test project; Chromium and WebKit manual passes confirm 720p TV setup containment, remote focus, MP4 metadata decoding, and clean console/network state | Tabbed TV Up Next/Scores/read-only Search, persistent join QR, scrolling join reminder, current-song notice, long-title containment, an original silent waiting-stage loop, and an experimental current-requester phone-to-host microphone are implemented; the new Realtime policy is not yet applied and no real remote-microphone device/network evidence exists; the physical matrix, CSP, hosted smoke, and dev-only dependency advisory remain open | Owner requested TV finalization and then the remote microphone slice, 2026-10-21 |
+| 10 | IN BUILD | TypeScript, lint, 68/68 unit checks, optimized build, and 20/20 focused desktop/mobile Chromium shell checks pass; immediate first-song and party-notification integration/Playwright coverage plus requester/host microphone authorization coverage are authored but gated on the dedicated hosted test project; Chromium and WebKit manual passes confirm 720p TV setup containment, remote focus, MP4 metadata decoding, and clean console/network state | Tabbed TV Up Next/Scores/read-only Search, persistent join QR, scrolling join reminder, current-song notice, long-title containment, an original silent waiting-stage loop, immediate first-song start on an authorized idle TV, private transient join/song notifications, and an experimental current-requester phone-to-host microphone are implemented; the new Realtime policy is not yet applied and no real remote-microphone device/network evidence exists; the physical matrix, CSP, hosted smoke, and dev-only dependency advisory remain open | Owner requested TV finalization, remote microphone, immediate first-song playback, and party notifications, 2026-10-22 |
 | N1 | NOT STARTED | — | — | — |
 | N2 | NOT STARTED | — | — | — |
 | N3 | NOT STARTED | — | — | — |

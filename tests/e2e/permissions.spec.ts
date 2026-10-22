@@ -69,14 +69,13 @@ test("host turns a guest phone into a TV remote and can take it back", async ({ 
     await expect(remotePermission).toHaveAttribute("aria-checked", "false");
     await guest.getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await guest.getByTestId("search-results").getByRole("button", { name: "Add" }).click();
-    await expect(page.getByTestId("queue-item")).toHaveCount(1);
+    await expect(page.getByTestId("queue-item")).toHaveCount(0);
+    await expect(tv.getByRole("heading", { name: title })).toBeVisible({ timeout: 10_000 });
 
     await remotePermission.click();
     await expect(remotePermission).toHaveAttribute("aria-checked", "true");
     await guest.getByRole("tab", { name: "Stage" }).click();
     await expect(guest.getByText("Your phone is a remote for the TV")).toBeVisible({ timeout: 10_000 });
-    await guest.getByTestId("playback-remote").getByRole("button", { name: "Start next song" }).click();
-    await expect(tv.getByRole("heading", { name: title })).toBeVisible({ timeout: 10_000 });
     await tv.getByRole("button", { name: "Start video" }).click();
     await expect(guest.getByText("Player: playing")).toBeVisible({ timeout: 10_000 });
     await guest.getByTestId("playback-remote").getByRole("button", { name: "Pause", exact: true }).click();

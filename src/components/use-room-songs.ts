@@ -11,7 +11,8 @@ import {
   type FavoriteSong,
 } from "@/lib/songs/favorites";
 import { DEFAULT_GUEST_PERMISSIONS, GUEST_PERMISSIONS, type GuestPermission } from "@/lib/permissions/rules";
-import type { QueueSnapshot } from "@/lib/songs/queue";
+import { parsePartyNotification, type PartyNotification } from "@/lib/rooms/notification-rules";
+import type { QueueAddSnapshot, QueueSnapshot } from "@/lib/songs/queue";
 import type { SongResult } from "@/lib/songs/youtube";
 import { applyPartyTheme, restorePersonalPartyTheme } from "@/lib/themes/client";
 import { DEFAULT_PARTY_THEME, getPartyTheme, type PartyThemeId } from "@/lib/themes/rules";
@@ -37,7 +38,7 @@ export async function responseError(response: Response): Promise<string> {
 }
 
 
-export function useRoomSongs({ code, role, singer }: { code: string; role: "host" | "guest"; singer: string }) {
+export function useRoomSongs({ code, role, singer, guestId }: { code: string; role: "host" | "guest"; singer: string; guestId?: string }) {
   const [queue, setQueue] = useState<QueueSnapshot>(emptyQueue);
   const [queueState, setQueueState] = useState<"loading" | "connected" | "reconnecting" | "ended">("loading");
   const [queueMessage, setQueueMessage] = useState("");
@@ -50,6 +51,8 @@ export function useRoomSongs({ code, role, singer }: { code: string; role: "host
   const favorites = useMemo(() => parseSongFavorites(favoriteStorage), [favoriteStorage]);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const pendingAdds = useRef(new Map<string, string>());
+  const notificationTimers = useRef(new Map<string, number>());
+  const [partyNotifications, setPartyNotifications] = useState<PartyNotification[]>([]);
   const canAssignSingers = singerName.trim().length >= 2 && (!duetEnabled || duetSingerName.trim().length >= 2);
   const canAddSongs = role === "host" || queue.guestPermissions.addSongs;
   const canManageQueue = role === "host" || queue.guestPermissions.queueControl;
@@ -99,6 +102,20 @@ export function useRoomSongs({ code, role, singer }: { code: string; role: "host
         if (!active || terminal) { void client.realtime.disconnect(); return; }
         const channel = client.channel(config.topic, { config: { private: true } })
           .on("broadcast", { event: "queue_changed" }, () => void refresh())
+          .on("broadcast", { event: "party_notification" }, ({ payload }) => {
+            const event = parsePartyNotification(payload);
+            if (!event) return;
+            const ownPhoneEvent = event.actorId !== null && event.actorId === guestId;
+            const ownDesktopHostEvent = event.actorId === null && role === "host" && !guestId;
+            if (ownPhoneEvent || ownDesktopHostEvent) return;
+            setPartyNotifications((current) => current.some((item) => item.id === event.id) ? current : [...current.slice(-2), event]);
+            const existing = notificationTimers.current.get(event.id);
+            if (existing) window.clearTimeout(existing);
+            notificationTimers.current.set(event.id, window.setTimeout(() => {
+              notificationTimers.current.delete(event.id);
+              setPartyNotifications((current) => current.filter((item) => item.id !== event.id));
+            }, 4_500));
+          })
           .subscribe((status) => {
             if (status === "SUBSCRIBED") { retryCount = 0; void refresh(); }
             else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status) && realtimeChannel === channel) {
@@ -118,8 +135,9 @@ export function useRoomSongs({ code, role, singer }: { code: string; role: "host
     const timer = window.setInterval(() => void refresh(), 3_000);
     const online = () => { void refresh(); if (!realtimeChannel) { if (retryTimer) window.clearTimeout(retryTimer); retryTimer = undefined; void subscribe(); } };
     window.addEventListener("online", online);
-    return () => { active = false; window.clearInterval(timer); if (retryTimer) window.clearTimeout(retryTimer); window.removeEventListener("online", online); const client = realtimeClient; const channel = realtimeChannel; if (client && channel) { void client.removeChannel(channel); void client.realtime.disconnect(); } };
-  }, [code]);
+    const timers = notificationTimers.current;
+    return () => { active = false; window.clearInterval(timer); if (retryTimer) window.clearTimeout(retryTimer); window.removeEventListener("online", online); for (const noticeTimer of timers.values()) window.clearTimeout(noticeTimer); timers.clear(); const client = realtimeClient; const channel = realtimeChannel; if (client && channel) { void client.removeChannel(channel); void client.realtime.disconnect(); } };
+  }, [code, guestId, role]);
 
   useEffect(() => {
     const normalized = query.normalize("NFKC").replace(/\s+/gu, " ").trim();
@@ -149,10 +167,10 @@ export function useRoomSongs({ code, role, singer }: { code: string; role: "host
         body: JSON.stringify({ searchResultId: song.id, singerName, duetSingerName: duetEnabled ? duetSingerName : null, requestKey }),
       });
       if (!response.ok) { pendingAdds.current.delete(song.id); setQueueMessage(await responseError(response)); return; }
-      const snapshot = await response.json() as QueueSnapshot;
+      const snapshot = await response.json() as QueueAddSnapshot;
       setQueue((current) => snapshot.version >= current.version ? snapshot : current);
       pendingAdds.current.delete(song.id);
-      setQueueMessage(`${song.title} added to the queue.`);
+      setQueueMessage(snapshot.autoStarted ? `${song.title} is starting on the TV.` : `${song.title} added to the queue.`);
     } catch { setQueueMessage("Could not add this song. Check your connection and retry."); }
     finally { setWorkingId(null); }
   }
@@ -288,7 +306,7 @@ export function useRoomSongs({ code, role, singer }: { code: string; role: "host
   }
 
   return {
-    queue, queueState, queueMessage, setQueueMessage, query, setQuery, searchState, setSearchState,
+    queue, queueState, queueMessage, setQueueMessage, partyNotifications, query, setQuery, searchState, setSearchState,
     singerName, setSingerName, duetEnabled, setDuetEnabled, duetSingerName, setDuetSingerName,
     favorites, workingId, canAssignSingers, canAddSongs, canManageQueue,
     add, toggleFavorite, addFavorite, addByLookup, change, toggleFairRotation, toggleGuestPermission, changePartyTheme,

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { RoomParticipants } from "@/components/room-participants";
 import { GuestPhoneRoom } from "@/components/guest-phone-room";
+import { MicrophoneStudio } from "@/components/microphone-studio";
 import { PlaybackDashboard } from "@/components/playback-dashboard";
 import { RoomScores } from "@/components/room-scores";
 import { SiteFooter } from "@/components/site-footer";
@@ -30,9 +31,10 @@ export default async function GuestRoomPage({ params }: { params: Promise<{ code
           guestId={guest.id}
           guestLabel={guest.label}
           role={role}
-          stage={<PlaybackDashboard code={code} role={role} guestId={guest.id} showTvSetup={false} />}
+          stage={<PlaybackDashboard code={code} role={role} guestId={guest.id} showTvSetup={guest.isHost} />}
           scores={<RoomScores code={code} />}
           people={<RoomParticipants code={code} guest currentMemberId={guest.id} canTransferHost={guest.isHost} />}
+          studio={guest.isHost ? <MicrophoneStudio /> : null}
         />
       </main>
       <SiteFooter />

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Crown, Flame, Heart, ListMusic, MonitorPlay, Mic2, Search, Settings2, Trophy, UserRound, X } from "lucide-react";
 import { GuestRoomActions } from "@/components/guest-room-actions";
+import { PartyNotificationToasts } from "@/components/party-notification-toasts";
 import { formatDuration, SongThumbnail } from "@/components/song-thumbnail";
 import { responseError, useRoomSongs } from "@/components/use-room-songs";
 import type { PlaybackSnapshot } from "@/lib/playback/state";
@@ -32,6 +33,7 @@ type GuestPhoneRoomProps = {
   stage: ReactNode;
   scores: ReactNode;
   people: ReactNode;
+  studio?: ReactNode;
 };
 
 function usePlaybackSnapshot(code: string) {
@@ -91,11 +93,11 @@ function ReactionButton({ code, enabled }: { code: string; enabled: boolean }) {
   </div>;
 }
 
-export function GuestPhoneRoom({ code, guestId, guestLabel, role, stage, scores, people }: GuestPhoneRoomProps) {
+export function GuestPhoneRoom({ code, guestId, guestLabel, role, stage, scores, people, studio }: GuestPhoneRoomProps) {
   const router = useRouter();
-  const songs = useRoomSongs({ code, role, singer: guestLabel });
+  const songs = useRoomSongs({ code, role, singer: guestLabel, guestId });
   const {
-    queue, queueState, queueMessage, query, setQuery, searchState, setSearchState,
+    queue, queueState, queueMessage, partyNotifications, query, setQuery, searchState, setSearchState,
     singerName, setSingerName, duetEnabled, setDuetEnabled, duetSingerName, setDuetSingerName,
     favorites, workingId, canAssignSingers, canAddSongs, canManageQueue,
     add, toggleFavorite, addFavorite, addByLookup, change, toggleFairRotation, toggleGuestPermission, changePartyTheme,
@@ -160,6 +162,7 @@ export function GuestPhoneRoom({ code, guestId, guestLabel, role, stage, scores,
   const addButton = (label: string, onClick: () => void, busy: boolean) => <button type="button" aria-label={label} disabled={addDisabled} onClick={onClick} className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-xl font-black text-white shadow-[0_8px_20px_rgba(0,0,0,.35)] disabled:opacity-45">{busy ? "…" : <span aria-hidden="true">+</span>}</button>;
 
   return <div className="mx-auto w-full max-w-xl pb-28">
+    <PartyNotificationToasts events={partyNotifications} />
     <header className="sticky top-0 z-40 -mx-4 flex items-center gap-2 border-b border-white/10 bg-[#0b0d16]/90 px-4 py-3 backdrop-blur-xl">
       <Image src="/brand/microphone-logo.png" alt="MyKaraoke" width={32} height={32} className="size-8 shrink-0" />
       <p className="min-w-0 flex-1 text-sm font-bold text-muted-foreground">Room <span className="font-mono text-base font-black tracking-wider text-accent">{code}</span></p>
@@ -278,7 +281,19 @@ export function GuestPhoneRoom({ code, guestId, guestLabel, role, stage, scores,
     {role === "host" ? <div role="tabpanel" id="guest-panel-host" aria-labelledby="guest-tab-host" hidden={tab !== "host"} className="space-y-5 pt-4">
       <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
         <h2 className="flex items-center gap-2 text-lg font-black"><Crown className="size-5 text-accent" aria-hidden="true" />Host controls</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Manage the party from this phone. Transfer host access in the people list below.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Manage the whole party from this phone. Transfer host access in the people list below.</p>
+        <div className="mt-4 grid grid-cols-3 gap-2" aria-label="Host tool shortcuts">
+          <button type="button" onClick={() => selectTab("stage")} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2 text-center text-xs font-bold text-white transition hover:border-primary/60 hover:bg-primary/10">
+            <MonitorPlay className="size-5 text-accent" aria-hidden="true" />TV &amp; playback
+          </button>
+          <button type="button" onClick={() => selectTab("queue")} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2 text-center text-xs font-bold text-white transition hover:border-primary/60 hover:bg-primary/10">
+            <ListMusic className="size-5 text-accent" aria-hidden="true" />Queue
+          </button>
+          <button type="button" onClick={() => selectTab("scores")} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2 text-center text-xs font-bold text-white transition hover:border-primary/60 hover:bg-primary/10">
+            <Trophy className="size-5 text-accent" aria-hidden="true" />Scores
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">TV pairing recovery, playback, queue controls, and scores stay in their dedicated tabs so they remain easy to use on a phone.</p>
       </section>
       <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-5" aria-labelledby="phone-host-theme">
         <h3 id="phone-host-theme" className="font-black">Room theme</h3>
@@ -292,6 +307,7 @@ export function GuestPhoneRoom({ code, guestId, guestLabel, role, stage, scores,
         <h3 id="phone-host-permissions" className="font-black">Guest permissions</h3>
         <div className="mt-3 space-y-2">{GUEST_PERMISSIONS.map((permission) => <button key={permission.id} type="button" role="switch" aria-checked={queue.guestPermissions[permission.id]} disabled={workingId !== null} onClick={() => void toggleGuestPermission(permission.id)} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-left"><span><span className="block text-sm font-semibold">{permission.label}</span><span className="block text-xs text-muted-foreground">{permission.description}</span></span><span className={`h-6 w-11 shrink-0 rounded-full p-1 ${queue.guestPermissions[permission.id] ? "bg-primary" : "bg-white/15"}`}><span className={`block size-4 rounded-full bg-white transition ${queue.guestPermissions[permission.id] ? "translate-x-5" : ""}`} /></span></button>)}</div>
       </section>
+      {studio ? <div data-testid="phone-host-studio">{studio}</div> : null}
       {people}
     </div> : null}
 

@@ -5,6 +5,10 @@ export function shouldAutoCueAfterPair(currentItemId: string | null, queuedCount
   return currentItemId === null && queuedCount > 0;
 }
 
+export function shouldAutoStartAfterQueueAdd(devicePaired: boolean, currentItemId: string | null): boolean {
+  return devicePaired && currentItemId === null;
+}
+
 export function commandReplayDecision(
   previousAction: string | undefined,
   requestedAction: string,

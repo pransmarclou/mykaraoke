@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { commandReplayDecision, playerEventTransition, shouldAutoCueAfterPair } from "../../src/lib/playback/rules";
+import { commandReplayDecision, playerEventTransition, shouldAutoCueAfterPair, shouldAutoStartAfterQueueAdd } from "../../src/lib/playback/rules";
 
 test("pairing auto-cues only when a waiting queue exists and no song is current", () => {
   assert.equal(shouldAutoCueAfterPair(null, 2), true);
   assert.equal(shouldAutoCueAfterPair(null, 0), false);
   assert.equal(shouldAutoCueAfterPair("current", 2), false);
+});
+
+test("a queue addition auto-starts only on an authorized idle TV", () => {
+  assert.equal(shouldAutoStartAfterQueueAdd(true, null), true);
+  assert.equal(shouldAutoStartAfterQueueAdd(false, null), false);
+  assert.equal(shouldAutoStartAfterQueueAdd(true, "current"), false);
 });
 
 test("host command keys replay only the same action", () => {

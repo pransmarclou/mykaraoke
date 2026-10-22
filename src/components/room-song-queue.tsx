@@ -6,16 +6,18 @@ import { singerLabel } from "@/lib/songs/singers";
 import { getPartyTheme, PARTY_THEMES } from "@/lib/themes/rules";
 import { formatDuration as duration, SongThumbnail } from "@/components/song-thumbnail";
 import { useRoomSongs } from "@/components/use-room-songs";
+import { PartyNotificationToasts } from "@/components/party-notification-toasts";
 
 export function RoomSongQueue({ code, role, singer }: { code: string; role: "host" | "guest"; singer: string }) {
   const {
-    queue, queueState, queueMessage, query, setQuery, searchState, setSearchState,
+    queue, queueState, queueMessage, partyNotifications, query, setQuery, searchState, setSearchState,
     singerName, setSingerName, duetEnabled, setDuetEnabled, duetSingerName, setDuetSingerName,
     favorites, workingId, canAssignSingers, canAddSongs, canManageQueue,
     add, toggleFavorite, addFavorite, change, toggleFairRotation, toggleGuestPermission, changePartyTheme,
   } = useRoomSongs({ code, role, singer });
 
   return <section className="feature-panel rounded-[1.75rem] p-6 sm:p-8" aria-labelledby="song-queue-title">
+    <PartyNotificationToasts events={partyNotifications} />
     <div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/15 text-[#ffad69]"><ListMusic className="size-5" aria-hidden="true" /></span><div><h2 id="song-queue-title" className="text-xl font-black tracking-tight">Up next</h2><p className="text-sm text-muted-foreground">Shared order for everyone in this room</p></div></div>
     {queueState === "connected" ? <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] p-4" data-testid="party-theme"><div className="flex items-center gap-2"><Palette className="size-4 text-accent" aria-hidden="true" /><p className="text-sm font-bold text-white">Party theme</p></div><p className="mt-1 text-xs leading-5 text-muted-foreground">{role === "host" ? "Choose the palette shared by host, guest, and paired TV browsers." : `The host selected ${getPartyTheme(queue.partyTheme).label}.`}</p>{role === "host" ? <div className="mt-3 flex flex-wrap gap-2">{PARTY_THEMES.map((theme) => <button key={theme.id} type="button" aria-label={`Use ${theme.label} party theme`} aria-pressed={queue.partyTheme === theme.id} disabled={workingId !== null} onClick={() => void changePartyTheme(theme.id)} className={`queue-action min-h-11 ${queue.partyTheme === theme.id ? "border-primary/70 bg-primary/25" : ""}`}><span className="size-3 rounded-full border border-white/40" style={{ backgroundColor: theme.swatch }} aria-hidden="true" />{theme.label}</button>)}</div> : null}</div> : null}
     {queueState === "connected" ? <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div><p className="text-sm font-bold text-white">Fair singer rotation</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Alternates waiting singers while keeping each singer&apos;s songs in request order.</p></div>{role === "host" ? <button type="button" aria-label={queue.fairRotation ? "Turn fair singer rotation off" : "Turn fair singer rotation on"} aria-pressed={queue.fairRotation} disabled={workingId !== null} onClick={() => void toggleFairRotation()} className={`queue-action min-h-11 ${queue.fairRotation ? "border-[#ff6e8f]/60 bg-[#d92362]/25" : ""}`}>{workingId === "rotation" ? "Saving…" : queue.fairRotation ? "On" : "Off"}</button> : <span className={`rounded-full px-3 py-1 text-xs font-bold ${queue.fairRotation ? "bg-[#d92362]/25 text-[#ffb0c3]" : "bg-white/5 text-muted-foreground"}`}>{queue.fairRotation ? "On" : "Off"}</span>}</div> : null}

@@ -57,8 +57,7 @@ test("host and guest rate a performance and the TV shows the leaderboard", async
     await page.getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await page.getByRole("textbox", { name: "Singer name" }).fill("Alex");
     await page.getByTestId("search-results").getByRole("button", { name: "Add" }).click();
-    await expect(page.getByTestId("queue-item")).toHaveCount(1);
-    await page.getByRole("button", { name: "Start next song" }).click();
+    await expect(page.getByTestId("queue-item")).toHaveCount(0);
     await expect(tv.getByRole("heading", { name: title })).toBeVisible({ timeout: 10_000 });
 
     await expect(guest.getByTestId("rating-target")).toContainText("Alex", { timeout: 10_000 });

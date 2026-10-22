@@ -1,7 +1,12 @@
+import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { getDb } from "@/lib/db";
+import { shouldAutoStartAfterQueueAdd } from "@/lib/playback/rules";
 import { canUse, type GuestPermissions } from "@/lib/permissions/rules";
 import { readGuestPermissions } from "@/lib/permissions/state";
+import { displayLabel } from "@/lib/rooms/display-name";
+import type { SongAddedNotification } from "@/lib/rooms/notification-rules";
+import { publishPartyNotification } from "@/lib/rooms/notifications";
 import { fairSingerOrder } from "@/lib/songs/rotation";
 import { normalizeSingerAssignment, type SingerAssignment } from "@/lib/songs/singers";
 import { readRoomPartyTheme } from "@/lib/themes/state";
@@ -19,6 +24,7 @@ export type QueueItem = {
   position: number;
 };
 export type QueueSnapshot = { version: number; items: QueueItem[]; fairRotation: boolean; guestPermissions: GuestPermissions; partyTheme: PartyThemeId };
+export type QueueAddSnapshot = QueueSnapshot & { autoStarted: boolean };
 export class QueueError extends Error {
   constructor(public readonly reason: "invalid" | "stale" | "duplicate" | "limit" | "limited" | "missing" | "ended" | "forbidden") { super(reason); }
 }
@@ -84,6 +90,40 @@ async function applyFairRotation(client: PoolClient, roomId: string): Promise<vo
   await writeOrder(client, roomId, fairSingerOrder(sortable, await currentSinger(client, roomId)));
 }
 
+async function autoStartFirstQueuedIfReady(client: PoolClient, roomId: string): Promise<boolean> {
+  const playback = await client.query<{ current_item_id: string | null; device_paired: boolean }>(
+    `select current_item_id, device_hash is not null as device_paired
+       from public.playback_state
+      where room_id = $1
+      for update`,
+    [roomId],
+  );
+  const state = playback.rows[0];
+  if (!state || !shouldAutoStartAfterQueueAdd(state.device_paired, state.current_item_id)) return false;
+
+  const next = await client.query<{ id: string }>(
+    `select id from public.queue_items
+      where room_id = $1 and status = 'queued'
+      order by position
+      limit 1`,
+    [roomId],
+  );
+  if (!next.rows[0]) return false;
+
+  await client.query(
+    "update public.queue_items set status = 'playing', position = null, updated_at = now() where room_id = $1 and id = $2 and status = 'queued'",
+    [roomId, next.rows[0].id],
+  );
+  await client.query(
+    `update public.playback_state
+        set current_item_id = $2, desired = 'play', observed = 'cued', error_code = null,
+            version = version + 1, updated_at = now()
+      where room_id = $1`,
+    [roomId, next.rows[0].id],
+  );
+  return true;
+}
+
 async function snapshot(client: PoolClient, roomId: string): Promise<QueueSnapshot> {
   const room = await client.query<{ queue_version: string }>("select queue_version from public.rooms where id = $1", [roomId]);
   return {
@@ -94,14 +134,24 @@ async function snapshot(client: PoolClient, roomId: string): Promise<QueueSnapsh
     partyTheme: await readRoomPartyTheme(client, roomId),
   };
 }
-async function publish(client: PoolClient, roomId: string): Promise<number> {
+async function publish(client: PoolClient, roomId: string, notification?: SongAddedNotification): Promise<number> {
   const changed = await client.query<{ queue_version: string; queue_topic: string }>(
     "update public.rooms set queue_version = queue_version + 1 where id = $1 returning queue_version, queue_topic", [roomId]);
   await client.query(
     "select realtime.send(jsonb_build_object('version', $1::bigint), 'queue_changed', $2, true)",
     [changed.rows[0].queue_version, `queue:${changed.rows[0].queue_topic}`],
   );
+  if (notification) await publishPartyNotification(client, changed.rows[0].queue_topic, notification);
   return Number(changed.rows[0].queue_version);
+}
+
+async function queueActorName(client: PoolClient, roomId: string, guestId: string | undefined): Promise<string> {
+  if (!guestId) return "Host";
+  const member = await client.query<{ display_name: string; name_number: number }>(
+    "select display_name, name_number from public.room_members where id = $1 and room_id = $2 and left_at is null limit 1",
+    [guestId, roomId],
+  );
+  return member.rows[0] ? displayLabel(member.rows[0].display_name, member.rows[0].name_number) : "Host";
 }
 
 export async function reserveQueueMutation(client: PoolClient, roomId: string, actorKey: string, limit: number, now = new Date()): Promise<void> {
@@ -128,7 +178,7 @@ export async function queueSnapshot(roomId: string): Promise<QueueSnapshot> {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-export async function addQueueItem(input: { roomId: string; role: "host" | "guest"; guestId?: string; searchResultId: string; singerName: unknown; duetSingerName?: unknown; requestKey: string }): Promise<QueueSnapshot> {
+export async function addQueueItem(input: { roomId: string; role: "host" | "guest"; guestId?: string; searchResultId: string; singerName: unknown; duetSingerName?: unknown; requestKey: string }): Promise<QueueAddSnapshot> {
   if (!UUID.test(input.searchResultId) || !UUID.test(input.requestKey)) throw new QueueError("invalid");
   const singers = normalizeSingerAssignment(input.singerName, input.duetSingerName);
   const actorKey = input.role === "host" ? "host" : input.guestId;
@@ -138,11 +188,11 @@ export async function addQueueItem(input: { roomId: string; role: "host" | "gues
     await client.query("begin");
     await lockRoom(client, input.roomId);
     if (!canUse(input.role, await readGuestPermissions(client, input.roomId), "addSongs")) throw new QueueError("forbidden");
-    const replay = await client.query("select 1 from public.queue_items where room_id = $1 and actor_key = $2 and request_key = $3", [input.roomId, actorKey, input.requestKey]);
+    const replay = await client.query<{ status: string }>("select status from public.queue_items where room_id = $1 and actor_key = $2 and request_key = $3", [input.roomId, actorKey, input.requestKey]);
     if (replay.rows[0]) {
       const value = await snapshot(client, input.roomId);
       await client.query("commit");
-      return value;
+      return { ...value, autoStarted: replay.rows[0].status === "playing" };
     }
     const song = await client.query<{ youtube_id: string; title: string; channel_title: string; duration_seconds: number }>(
       `select youtube_id, title, channel_title, duration_seconds from public.song_search_results
@@ -162,10 +212,19 @@ export async function addQueueItem(input: { roomId: string; role: "host" | "gues
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [input.roomId, input.searchResultId, song.rows[0].youtube_id, song.rows[0].title, song.rows[0].channel_title, song.rows[0].duration_seconds, singers.singerName, singers.duetSingerName, input.guestId ?? null, actorKey, input.requestKey, position.rows[0].position]);
     if (await fairRotationEnabled(client, input.roomId)) await applyFairRotation(client, input.roomId);
-    await publish(client, input.roomId);
+    const autoStarted = await autoStartFirstQueuedIfReady(client, input.roomId);
+    await publish(client, input.roomId, {
+      id: randomUUID(),
+      kind: "song_added",
+      actorId: input.guestId ?? null,
+      actorName: await queueActorName(client, input.roomId, input.guestId),
+      songTitle: song.rows[0].title,
+      autoStarted,
+      occurredAt: new Date().toISOString(),
+    });
     const value = await snapshot(client, input.roomId);
     await client.query("commit");
-    return value;
+    return { ...value, autoStarted };
   } catch (error) {
     await client.query("rollback");
     throw error;

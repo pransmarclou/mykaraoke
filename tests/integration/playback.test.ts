@@ -42,6 +42,11 @@ test("a host launch directly provisions its current browser as the TV", async ()
   assert.equal(tv.autoStarted, false);
   assert.equal(await tvRoomAccess(host.room.code, tv.credential), host.room.id);
   assert.equal((await playbackSnapshot(host.room.id)).devicePaired, true);
+  const searchResultId = await fixtureSong("fBcDeFgHi08");
+  const added = await addQueueItem({ roomId: host.room.id, role: "host", searchResultId, singerName: "Host", requestKey: randomUUID() });
+  assert.equal(added.autoStarted, true);
+  assert.equal(added.items.length, 0);
+  assert.equal((await playbackSnapshot(host.room.id)).current?.youtubeId, "fBcDeFgHi08");
 });
 
 test("pairing a display auto-cues an already saved room queue", async () => {
@@ -58,33 +63,34 @@ test("pairing a display auto-cues an already saved room queue", async () => {
   assert.equal(started.queuedCount, 0);
 });
 
-test("host commands, TV events, and queue advancement are atomic and idempotent", async () => {
+test("queue auto-start, host commands, TV events, and advancement are atomic and idempotent", async () => {
   const host = await createHostRoom(); rooms.push(host.room.id);
   await assert.rejects(hostPlaybackCommand(host.room.id, "start", randomUUID()), (error: unknown) => error instanceof PlaybackError && error.reason === "no_device");
   const paired = await pairTv(host.room.code, await issueTvPairCode(host.room.id));
   const firstSong = await fixtureSong("fBcDeFgHi01");
   const secondSong = await fixtureSong("fBcDeFgHi02");
-  for (const searchResultId of [firstSong, secondSong]) {
-    await addQueueItem({ roomId: host.room.id, role: "host", searchResultId, singerName: "Host", requestKey: randomUUID() });
-  }
-  const key = randomUUID();
-  const started = await hostPlaybackCommand(host.room.id, "start", key);
+  const first = await addQueueItem({ roomId: host.room.id, role: "host", searchResultId: firstSong, singerName: "Host", requestKey: randomUUID() });
+  const second = await addQueueItem({ roomId: host.room.id, role: "host", searchResultId: secondSong, singerName: "Host", requestKey: randomUUID() });
+  assert.equal(first.autoStarted, true);
+  assert.equal(second.autoStarted, false);
+  const started = await playbackSnapshot(host.room.id);
   assert.equal(started.current?.youtubeId, "fBcDeFgHi01");
   assert.equal(started.observed, "cued");
   assert.equal(started.next?.youtubeId, "fBcDeFgHi02");
   assert.deepEqual(started.upNext.map((item) => item.youtubeId), ["fBcDeFgHi02"]);
   assert.equal(started.queuedCount, 1);
   assert.equal((await queueSnapshot(host.room.id)).items.length, 1);
-  assert.equal((await hostPlaybackCommand(host.room.id, "start", key)).version, started.version);
-  await assert.rejects(hostPlaybackCommand(host.room.id, "skip", key), (error: unknown) => error instanceof PlaybackError && error.reason === "invalid");
   const blocked = await tvPlayerEvent(host.room.id, paired.credential, started.current!.id, "blocked");
   assert.equal(blocked.observed, "blocked");
   assert.equal(blocked.desired, "play");
   const playing = await tvPlayerEvent(host.room.id, paired.credential, started.current!.id, "playing");
   assert.equal(playing.observed, "playing");
-  const paused = await hostPlaybackCommand(host.room.id, "pause", randomUUID());
+  const key = randomUUID();
+  const paused = await hostPlaybackCommand(host.room.id, "pause", key);
   assert.equal(paused.desired, "pause");
   assert.equal(paused.observed, "playing");
+  assert.equal((await hostPlaybackCommand(host.room.id, "pause", key)).version, paused.version);
+  await assert.rejects(hostPlaybackCommand(host.room.id, "skip", key), (error: unknown) => error instanceof PlaybackError && error.reason === "invalid");
   assert.equal((await tvPlayerEvent(host.room.id, paired.credential, started.current!.id, "paused")).observed, "paused");
   await hostPlaybackCommand(host.room.id, "resume", randomUUID());
   const advanced = await tvPlayerEvent(host.room.id, paired.credential, started.current!.id, "ended");

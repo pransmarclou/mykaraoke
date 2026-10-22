@@ -2,7 +2,7 @@
 
 ## Implementation status
 
-As of 2026-10-21, Phase 10 is in build. Phase 9 browser-local song favorites,
+As of 2026-10-22, Phase 10 is in build. Phase 9 browser-local song favorites,
 ephemeral TV reactions, fair singer rotation, duet singer assignment, guest
 permissions/phone remote, and audience ratings with a live leaderboard as
 implemented slices. Three accessible themes now apply the owner-brand Stage
@@ -25,8 +25,11 @@ departing phone host. Guests can join, search
 server-verified YouTube metadata when an API key is configured, assign a singer,
 and add to a shared queue. Host-only order, skip, and remove actions are backed
 by transactions; Supabase Realtime invalidations plus snapshot polling keep
-devices reconciled. A paired TV browser can play through the official YouTube
-IFrame API while the host starts, pauses, resumes, and skips. A live desktop
+devices reconciled. When an authorized TV is ready and the stage is idle, the
+first song addition atomically becomes the current song; later additions stay
+queued and never interrupt the current singer. A paired TV browser can play
+through the official YouTube IFrame API while the host pauses, resumes, skips,
+or manually starts a waiting song as a recovery action. A live desktop
 player smoke check passed with an official sample video; two karaoke results
 returned YouTube embed error 150, and physical TVs remain untested.
 Room expiry warnings, terminal states, snapshot reconciliation, safe retries,
@@ -46,6 +49,13 @@ guest song additions, queue actions, reactions, ratings, and phone remote
 commands. Favorites do not sync to an account. Accounts and
 payments are not implemented. See `memory.md` for verification and
 `build-phases.md` for the next gate.
+
+Connected host, phone, and TV surfaces receive short, private room
+notifications when another member joins or adds a song. Join notices show the
+member's room display name. Song notices distinguish an immediately started
+first song from a request that remains in the queue. Events are transient,
+validated on receipt, bounded to three visible notices, and are not persisted
+as room history.
 
 The host can enable fair rotation for waiting songs. It alternates normalized
 singer names in stable rounds, preserves each singer's request order, and starts
@@ -107,7 +117,13 @@ manages the queue and participants, configures permissions, and manages
 microphones. That member can transfer host authority to another active phone;
 authority changes are serialized by the database and backed by the member's
 private session rather than the public room code. The room creator's separate
-private browser credential remains a recovery boundary for the web MVP.
+private browser credential remains a recovery boundary for the web MVP. The
+phone Host tab keeps the room theme, fair rotation, guest permissions,
+participants, host reassignment, and local Microphone Studio together, with
+shortcuts to the dedicated queue, score, and TV/playback surfaces. The active
+phone host can also generate a temporary TV pairing code when recovering a
+separately opened display. Closing the room remains restricted to the original
+room creator credential.
 
 ### Guest or singer
 

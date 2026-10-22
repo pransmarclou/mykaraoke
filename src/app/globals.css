@@ -23,6 +23,15 @@
 }
 
 .tv-reaction { animation: tv-reaction-rise 3.5s ease-out both; }
+
+@keyframes party-notification-in {
+  from { opacity: 0; transform: translateY(-0.5rem) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.party-notification { animation: party-notification-in 180ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .party-notification { animation: none; }
+}
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));

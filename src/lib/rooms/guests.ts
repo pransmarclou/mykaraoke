@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { displayLabel } from "@/lib/rooms/display-name";
+import { publishPartyNotification } from "@/lib/rooms/notifications";
 import { isPresent, type Participant } from "@/lib/rooms/presence";
 import { credentialDigest, newHostCredential, normalizeRoomCode } from "@/lib/rooms/room-code";
 
@@ -50,8 +52,8 @@ export async function joinRoom(code: string, displayName: string, previousCreden
   const client = await getDb().connect();
   try {
     await client.query("begin");
-    const roomResult = await client.query<{ id: string; status: string; expires_at: Date; host_member_id: string | null }>(
-      "select id, status, expires_at, host_member_id from public.rooms where code = $1 for update",
+    const roomResult = await client.query<{ id: string; status: string; expires_at: Date; host_member_id: string | null; queue_topic: string }>(
+      "select id, status, expires_at, host_member_id, queue_topic from public.rooms where code = $1 for update",
       [normalizedCode],
     );
     const room = roomResult.rows[0];
@@ -104,6 +106,13 @@ export async function joinRoom(code: string, displayName: string, previousCreden
     );
     inserted.rows[0].is_host = claimedHost.rowCount === 1;
     await client.query("insert into public.room_presence (member_id) values ($1)", [inserted.rows[0].id]);
+    await publishPartyNotification(client, room.queue_topic, {
+      id: randomUUID(),
+      kind: "member_joined",
+      actorId: inserted.rows[0].id,
+      actorName: displayLabel(inserted.rows[0].display_name, inserted.rows[0].name_number),
+      occurredAt: new Date().toISOString(),
+    });
     if (previousDigest) {
       const departed = await client.query<{ id: string; room_id: string }>("update public.room_members set left_at = now() where credential_hash = $1 and left_at is null returning id, room_id", [previousDigest]);
       await client.query("delete from public.room_presence where member_id in (select id from public.room_members where credential_hash = $1)", [previousDigest]);

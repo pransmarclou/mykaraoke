@@ -28,8 +28,7 @@ test("official YouTube sample plays on a paired display and the host skips it", 
     await page.getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await expect(page.getByTestId("search-results").getByRole("button", { name: "Add" }).first()).toBeVisible();
     await page.getByTestId("search-results").getByRole("button", { name: "Add" }).first().click();
-    await expect(page.getByTestId("queue-item")).toHaveCount(1);
-    await page.getByRole("button", { name: "Start next song" }).click();
+    await expect(page.getByTestId("queue-item")).toHaveCount(0);
     await expect(tv.getByTestId("tv-player").locator("iframe")).toBeVisible({ timeout: 20_000 });
     await tv.getByRole("button", { name: "Start video" }).click();
     await expect(tv.getByText("Player state: playing")).toBeVisible({ timeout: 30_000 });

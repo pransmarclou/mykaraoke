@@ -88,6 +88,15 @@ test("host and two guests see the same roster, with refresh and brief offline re
     }
     await expect(first.getByTestId("phone-host-badge")).toBeVisible();
     await expect(second.getByTestId("phone-host-badge")).toHaveCount(0);
+    await expect(second.getByRole("tab", { name: "Host" })).toHaveCount(0);
+    await first.getByRole("tab", { name: "Host" }).click();
+    await expect(first.getByRole("heading", { name: "Host controls" })).toBeVisible();
+    await expect(first.getByRole("heading", { name: "Room theme" })).toBeVisible();
+    await expect(first.getByRole("heading", { name: "Queue rules" })).toBeVisible();
+    await expect(first.getByRole("heading", { name: "Guest permissions" })).toBeVisible();
+    await expect(first.getByRole("heading", { name: "Microphone Studio" })).toBeVisible();
+    await first.getByRole("button", { name: "TV & playback" }).click();
+    await expect(first.getByRole("button", { name: "Generate TV pairing code" })).toBeVisible();
     await first.getByRole("tab", { name: "Host" }).click();
     await first.getByRole("button", { name: "Make host" }).click();
     await expect(first.getByTestId("phone-host-badge")).toHaveCount(0, { timeout: 10_000 });
