@@ -1597,6 +1597,28 @@ test-project, browser/device, and audio-hardware matrices are completed.
 - Not verified: Real iPhone/Android browsers, Safari's search-field styling,
   on-screen keyboard behavior, and the floating button over the iOS toolbar.
 
+## Phase 9/10 mobile reference simulation — 2026-10-22
+
+- Owner direction: Use REA to simulate the reference application's phone
+  presentation shown in the supplied joined-room screenshot.
+- Runtime evidence: REA successfully loaded the public reference root in an
+  isolated Chromium profile at 390x844 with device scale factor 3. Evidence
+  `ev_6e4ea127fc753a6109a34d00fdc2ed663c56712339ef927704ee7142ef819a27`
+  captured a complete DOM/accessibility result with no page errors.
+- Observed: The signed-out phone entry exposes an install prompt, Sign In,
+  separate Host and Join actions, a four-character room-code field whose Join
+  action is disabled while empty, and a QR scan action.
+- Evidence boundary: The isolated profile was not signed in and did not join or
+  mutate a room. The active room bar, search, now-playing card, tabs, ranked
+  song list, add controls, free-credit meter, and reaction button remain visible
+  only in the owner's static screenshot; their interaction behavior was not
+  re-observed and must not be presented as REA-verified.
+- Product consequence: The existing MyKaraoke touch-first guest surface may use
+  the broad mobile hierarchy as reference, but keeps MyKaraoke branding,
+  authorization, quota, queue, score, reaction, remote, and microphone behavior
+  independently specified and tested. No implementation or database mutation
+  was performed in this reconnaissance slice.
+
 ## Session handoff template
 
 Append a short entry after future work sessions:
