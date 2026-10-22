@@ -187,9 +187,13 @@ quota controls. Playback uses the official IFrame Player API on the designated
 playback surface. Microphone processing uses MediaDevices and Web Audio without
 extracting or combining the YouTube audio stream.
 
-Remote microphone audio is a later WebRTC system. Supabase may carry scoped
-signaling metadata, but audio travels peer-to-peer or through approved WebRTC
-infrastructure with STUN/TURN as needed.
+Remote microphone audio now has a deliberately experimental web slice for the
+guest who requested the current song. Supabase carries scoped, ephemeral,
+server-authorized signaling metadata only; audio travels peer-to-peer to the
+host browser or through configured WebRTC STUN/TURN infrastructure. Capture
+requires a guest gesture, arrives host-muted, is never persisted, and tears
+down on stop or song change. Production status remains blocked on real phone,
+network, latency, feedback, dropout, and TURN verification.
 
 Native clients will reuse server-authoritative room, queue, playback, and
 entitlement rules through authenticated APIs, not browser cookies. A future
@@ -363,7 +367,7 @@ A slice is complete only when all of the following are true:
 
 ## Out of scope for the first MVP
 
-- Remote phone microphones
+- Production claims for the experimental single-singer remote phone microphone
 - Multiple remote microphone streams
 - Karaoke scoring
 - Performance recording

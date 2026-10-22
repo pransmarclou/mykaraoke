@@ -128,6 +128,57 @@ body {
   margin-inline: auto;
 }
 
+.home-content-wrap {
+  width: min(100% - 2.5rem, 1480px);
+  margin-inline: auto;
+}
+
+.home-hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 174, 122, 0.13);
+  background: #0b0d16;
+}
+
+.home-hero-video,
+.home-hero-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.home-hero-video {
+  z-index: -2;
+  object-fit: cover;
+  object-position: center 42%;
+  filter: saturate(0.68) contrast(1.08) brightness(0.52);
+  transform: scale(1.02);
+}
+
+.home-hero-shade {
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(7, 8, 14, 0.4) 0%, rgba(7, 8, 14, 0.66) 52%, rgba(7, 8, 14, 0.94) 100%),
+    radial-gradient(circle at 50% 33%, transparent 0%, rgba(8, 7, 13, 0.3) 54%, rgba(8, 7, 13, 0.72) 100%);
+}
+
+.home-launch-card {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(13, 13, 19, 0.84);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.05), 0 25px 70px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(18px);
+}
+
+.home-launch-grid > .feature-panel {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(13, 13, 19, 0.84);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.05), 0 25px 70px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(18px);
+}
+
 .brand-lockup {
   width: clamp(8.4rem, 38vw, 13.4rem);
   height: 3rem;
@@ -455,6 +506,10 @@ body {
     width: min(100% - 2rem, 1200px);
   }
 
+  .home-content-wrap {
+    width: min(100% - 2rem, 1480px);
+  }
+
   .hero-art {
     min-height: 380px;
   }
@@ -482,6 +537,10 @@ body {
   }
 
   .tv-waiting-video {
+    display: none;
+  }
+
+  .home-hero-video {
     display: none;
   }
 

@@ -43,7 +43,8 @@ test("host theme changes synchronize to guest and paired TV browsers", async ({
         { timeout: 10_000 },
       );
     }
-    await expect(guest.getByText("The host selected Electric Blue.")).toBeVisible();
+    await guest.getByRole("tab", { name: "Stage" }).click();
+    await expect(guest.getByText("Party theme: The host selected Electric Blue.")).toBeVisible();
 
     await guest.reload();
     await tv.reload();

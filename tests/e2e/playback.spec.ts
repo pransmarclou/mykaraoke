@@ -68,6 +68,18 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(tv.getByRole("tab", { name: "Up next" })).toHaveAttribute("aria-selected", "true");
     await expect(tv.getByTestId("tv-join-card")).toContainText(code);
     await expect(tv.getByTestId("tv-stage-banner")).toHaveAccessibleName(`Welcome to MyKaraoke. Scan the QR code or enter room ${code} on your phone to join and add songs.`);
+    if (await tv.evaluate(() => window.matchMedia("(min-width: 768px)").matches)) {
+      const headerRows = await tv.getByTestId("tv-stage-header").evaluate((header) => {
+        const logo = header.querySelector<HTMLElement>("[data-testid='tv-stage-logo']")?.getBoundingClientRect();
+        const banner = header.querySelector<HTMLElement>("[data-testid='tv-stage-banner']")?.getBoundingClientRect();
+        const controls = header.querySelector<HTMLElement>("[data-testid='tv-stage-controls']")?.getBoundingClientRect();
+        return logo && banner && controls
+          ? [logo.top, banner.top, controls.top]
+          : [];
+      });
+      expect(headerRows).toHaveLength(3);
+      expect(Math.max(...headerRows) - Math.min(...headerRows)).toBeLessThan(24);
+    }
     await tv.getByRole("tab", { name: "Scores" }).click();
     await expect(tv.getByText("No scores yet.")).toBeVisible();
     await tv.getByRole("tab", { name: "Search" }).click();
@@ -94,6 +106,17 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(tv.getByRole("img", { name: `Compact QR code to join room ${code}` })).toBeVisible();
     await expect(tv.getByTestId("tv-queue-item")).toHaveCount(1);
     await expect(tv.getByTestId("tv-queue")).toContainText(titles[1]);
+    const titleSize = await tv.getByTestId("tv-now-playing-title").evaluate((title) => Number.parseFloat(getComputedStyle(title).fontSize));
+    expect(titleSize).toBeLessThanOrEqual(32);
+    if (await tv.evaluate(() => window.matchMedia("(min-width: 1280px)").matches)) {
+      const columnBottoms = await tv.evaluate(() => {
+        const stage = document.querySelector<HTMLElement>("[data-testid='tv-stage-column']")?.getBoundingClientRect();
+        const rail = document.querySelector<HTMLElement>("[data-testid='tv-utility-rail']")?.getBoundingClientRect();
+        return stage && rail ? [stage.bottom, rail.bottom] : [];
+      });
+      expect(columnBottoms).toHaveLength(2);
+      expect(Math.abs(columnBottoms[0] - columnBottoms[1])).toBeLessThan(2);
+    }
     const tvWidths = await tv.evaluate(() => ({ document: document.documentElement.scrollWidth, viewport: window.innerWidth }));
     expect(tvWidths.document).toBeLessThanOrEqual(tvWidths.viewport + 1);
     await expect(tv.getByTestId("singer-countdown")).toBeVisible();
@@ -104,8 +127,11 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(tv.getByRole("button", { name: "Start video" })).toBeFocused();
     await tv.keyboard.press("Enter");
     await expect(page.getByText("Player: playing")).toBeVisible({ timeout: 10_000 });
+    await guest.getByRole("tab", { name: "Stage" }).click();
     await expect(guest.getByText("Player: playing")).toBeVisible({ timeout: 10_000 });
     await expect(guest.getByText(`Singer: Alex`)).toBeVisible();
+    await expect(page.getByTestId("remote-mic-host")).toContainText("Singer phone microphone");
+    await expect(guest.getByTestId("remote-mic-guest").getByRole("button", { name: "Enable my microphone" })).toBeVisible();
     await guest.getByRole("button", { name: "Send Applause" }).click();
     await expect(guest.getByRole("status").filter({ hasText: "Applause sent to the TV" })).toBeVisible();
     await expect(tv.getByLabel("Party reactions")).toContainText("Alex", { timeout: 10_000 });
@@ -181,6 +207,8 @@ test("two guests and a TV recover from reloads and network loss, then stop when 
     await expect(guests[1].getByTestId("queue-item")).toHaveCount(1);
     await page.getByRole("button", { name: "Start next song" }).click();
     await expect(tv.getByRole("heading", { name: "Lifecycle Fixture Song" })).toBeVisible();
+    await expect(guests[0].getByTestId("remote-mic-guest")).toBeVisible();
+    await expect(guests[1].getByTestId("remote-mic-guest")).toHaveCount(0);
     await tv.getByRole("button", { name: "Start video" }).click();
     await expect(page.getByText("Player: playing")).toBeVisible();
 

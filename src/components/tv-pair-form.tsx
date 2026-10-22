@@ -15,6 +15,7 @@ export function TvPairForm({ code }: { code: string }) {
     try {
       const response = await fetch(`/api/rooms/${code}/playback/pair`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pairCode }) });
       if (!response.ok) throw new Error(((await response.json()) as { error?: string }).error ?? "Pairing failed.");
+      try { window.sessionStorage.setItem(`mykaraoke:tv-autoplay:${code}`, "1"); } catch { /* Playback keeps its visible manual fallback. */ }
       router.refresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Pairing failed."); }
     finally { setBusy(false); }

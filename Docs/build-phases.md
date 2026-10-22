@@ -435,7 +435,8 @@ adds a public browser capability check and a dated, truthful tested-versus-open
 device evidence ledger. It does not request media permission or treat API
 presence as proof of hardware compatibility. A second slice adds verified
 application-wide security/privacy response headers and records a zero-finding
-runtime dependency audit. A TV usability slice adds branded pairing/waiting
+runtime dependency audit. An enforced per-request nonce Content Security Policy now
+covers every page, verified locally against the YouTube player and thumbnails. A TV usability slice adds branded pairing/waiting
 states, a singer-ready countdown, and directional remote focus; CSP and the
 named device matrix remain open. The waiting stage now includes an original,
 silent 16:9 Filipino-family videoke loop with a static gradient fallback and
@@ -443,7 +444,18 @@ reduced-motion shutdown; its real smart-TV decoding/performance check remains
 part of the named device matrix. The paired layout also keeps its compact join
 QR under every utility tab, runs an accessible join reminder in the header,
 and briefly replaces that reminder with a new-song title/singer notice whenever
-the TV observes a current-song transition.
+the TV observes a current-song transition. An owner-requested experimental
+slice also lets the guest who requested the current song explicitly share phone
+microphone audio to the host browser over WebRTC, with separate guest and host
+mute controls; real-device/network acceptance remains open.
+The landing surface now uses an original full-height performance hero with
+immediate Host and Join actions. Starting there creates or resumes this
+browser's active host room in one action. When a newly paired TV finds a queue
+already present in that room, pairing atomically cues the first item and the
+display attempts playback after the singer countdown, preserving a visible
+manual action when browser autoplay policy blocks it. This does not yet restore
+a queue from a cross-device account: optional account identity and queue sync
+remain an explicit Phase 9 follow-up rather than a completed claim.
 
 ### User-facing outcome
 
@@ -462,6 +474,10 @@ the web MVP.
   secret scan, and truthful compatibility and failure-state documentation.
 - Keep the browser host/guest experience complete during the web MVP; do not
   introduce an app-install gate or a web billing flow in this phase.
+- Keep the experimental remote microphone limited to one current requester,
+  explicit capture consent, server-authorized ephemeral signaling, peer/TURN
+  audio transport, dual mute controls, and deterministic teardown. Do not call
+  it production-ready without measured real-device and network evidence.
 - Treat PWA installability as optional enhancement, not a launch prerequisite;
   YouTube and real-time party features must not be described as offline-ready.
 
@@ -571,8 +587,10 @@ official YouTube playback surface for big-screen use.
 - Port the accepted singer/party features and relevant settings to native UI.
 - Implement local microphone permission, device behavior, monitoring, and
   effects without mixing with or extracting YouTube audio.
-- Treat phone-to-display microphone transport as a separate experimental
-  WebRTC slice: scoped signaling, mute, teardown, STUN/TURN, and measured delay.
+- Extend the web MVP's experimental current-singer phone-to-host WebRTC slice
+  only after its scoped signaling, dual mute, teardown, STUN/TURN, and measured
+  delay behavior is verified; do not silently treat that web implementation as
+  native parity.
 - Do not promise wireless microphone quality or universal TV compatibility.
 
 ### Tests and verification
@@ -693,7 +711,7 @@ Update this table only with evidence, never optimism.
 | 7 | IMPLEMENTED, VERIFICATION PENDING | Unit 15/15, integration 18/18, lint/typecheck/DB lint, production build, isolated desktop/mobile four-session journeys, hosted create/persist/authorized-close smoke, and 25 non-mutating production shell checks passed 2026-10-19; Firefox is blocked before navigation by the documented macOS 27 runner issue | Production HTTPS is Ready and real Safari host/reload checks passed; separate hosted test project, Firefox coverage, physical phone, and TV-browser checks remain | Owner review pending |
 | 8 | IMPLEMENTED, VERIFICATION PENDING | Unit 19/19, lint/typecheck/build, and focused desktop/mobile microphone recovery journeys passed | Real Safari verified MacBook Pro and USB EarPods input selection, switching, activity, mute, and an owner-confirmed audible five-second 9% monitor state routed to EarPods; separate latency characterization, disconnect/recovery, Windows, and Bluetooth checks remain | Owner review pending |
 | 9 | IMPLEMENTED, VERIFICATION PENDING | 48 unit checks cover favorites, reactions, rotation, duets, guest permissions, ratings/leaderboard, and theme rules; 12 focused desktop/mobile shell checks cover personal theme persistence, responsive layout, and WCAG A/AA; room-theme integration and host/guest/TV tests are authored but blocked without the allowlisted hosted test project | All three themes visually reviewed; hosted schema columns confirmed read-only; combined browser interaction, migration-history reconciliation, and physical TV verification remain open | Owner directed the next phase while deferring the combined gate, 2026-10-20 |
-| 10 | IN BUILD | TypeScript, lint, 56/56 unit checks, optimized build, and 20/20 focused desktop/mobile Chromium shell checks pass; Chromium and WebKit manual passes confirm 720p TV setup containment, remote focus, MP4 metadata decoding, and clean console/network state; byte-range delivery is covered | Tabbed TV Up Next/Scores/read-only Search, persistent join QR, scrolling join reminder, current-song notice, long-title containment, and an original silent waiting-stage loop are implemented; the paired database journey awaits the dedicated test project, and the physical matrix, CSP, hosted smoke, and dev-only dependency advisory remain open | Owner requested TV finalization, 2026-10-21 |
+| 10 | IN BUILD | TypeScript, lint, 60/60 unit checks, optimized build, and 20/20 focused desktop/mobile Chromium shell checks pass; requester/host microphone authorization integration coverage is authored but gated on the dedicated hosted test project; Chromium and WebKit manual passes confirm 720p TV setup containment, remote focus, MP4 metadata decoding, and clean console/network state | Tabbed TV Up Next/Scores/read-only Search, persistent join QR, scrolling join reminder, current-song notice, long-title containment, an original silent waiting-stage loop, and an experimental current-requester phone-to-host microphone are implemented; the new Realtime policy is not yet applied and no real remote-microphone device/network evidence exists; the physical matrix, CSP, hosted smoke, and dev-only dependency advisory remain open | Owner requested TV finalization and then the remote microphone slice, 2026-10-21 |
 | N1 | NOT STARTED | — | — | — |
 | N2 | NOT STARTED | — | — | — |
 | N3 | NOT STARTED | — | — | — |

@@ -1,10 +1,10 @@
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, Headphones, Mic2, MonitorPlay, QrCode, Radio, UsersRound } from "lucide-react";
+import { Headphones, Mic2, MonitorPlay, QrCode, Radio, UsersRound } from "lucide-react";
+import { HostCreateForm } from "@/components/host-create-form";
 import { JoinForm } from "@/components/join-form";
-import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { hasDatabaseConfiguration } from "@/lib/db";
 
 const steps = [
   {
@@ -28,44 +28,48 @@ const steps = [
 ];
 
 export default function HomePage() {
+  const roomCreationAvailable = hasDatabaseConfiguration();
+
   return (
     <div className="page-shell">
-      <SiteHeader />
-      <main>
-        <section className="content-wrap py-14 md:py-20" aria-labelledby="hero-title">
-          <div className="mx-auto max-w-4xl text-center">
-            <p className="eyebrow">Karaoke, together</p>
-            <h1 id="hero-title" className="mt-7 text-[clamp(3.5rem,8vw,7rem)] leading-[0.94] font-black tracking-[-0.075em]">
-              Your songs. <span className="text-gradient">Your stage.</span><br />
-              Your party.
+      <section className="home-hero" aria-labelledby="hero-title">
+        <video autoPlay muted loop playsInline preload="metadata" aria-hidden="true" tabIndex={-1} className="home-hero-video motion-reduce:hidden">
+          <source src="/media/tv-videoke-family-loop.mp4" type="video/mp4" />
+        </video>
+        <div className="home-hero-shade" aria-hidden="true" />
+        <SiteHeader variant="hero" />
+        <div className="home-content-wrap relative z-10 flex min-h-[calc(100svh-5rem)] flex-col justify-center py-12 md:py-16">
+          <div className="mx-auto max-w-6xl text-center">
+            <p className="eyebrow">One room. Every voice.</p>
+            <h1 id="hero-title" className="mt-6 text-[clamp(3.7rem,9vw,8.8rem)] leading-[0.84] font-black tracking-[-0.078em]">
+              Your songs. <span className="text-gradient">Your stage.</span>
             </h1>
-            <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-[#c9bec3]">
-              Put the performance on the big screen, then let everyone use their phone to join the room and shape the queue.
+            <p className="mx-auto mt-7 max-w-3xl text-[clamp(1rem,1.7vw,1.35rem)] leading-8 text-[#d9cfd3]">
+              Start the room on the big screen, then let every singer join and shape the queue from their phone.
             </p>
           </div>
 
-          <div className="mx-auto mt-11 grid max-w-5xl items-stretch gap-4 md:grid-cols-2">
-            <article className="feature-panel flex min-h-full flex-col rounded-[1.75rem] p-6 sm:p-8" aria-labelledby="host-card-title">
-              <span className="grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-[#ffb91b] via-[#ff663e] to-[#f90082] shadow-[0_16px_44px_rgba(255,56,103,.2)]">
-                <Image src="/brand/microphone-logo.png" alt="" width={1402} height={1122} className="h-12 w-14 object-contain" priority />
+          <div className="home-launch-grid mx-auto mt-10 grid w-full max-w-6xl items-stretch gap-4 lg:grid-cols-2">
+            <article className="home-launch-card flex min-h-full flex-col rounded-[1.4rem] p-6 sm:p-8" aria-labelledby="host-card-title">
+              <span className="grid size-14 place-items-center rounded-2xl border border-[#ffb252]/30 bg-[#ff9c2e]/10 text-[#ffb65a]">
+                <Image src="/brand/microphone-logo.png" alt="" width={1402} height={1122} className="h-10 w-11 object-contain" priority />
               </span>
-              <p className="eyebrow mt-7">On the big screen</p>
+              <p className="eyebrow mt-6">Lead the party</p>
               <h2 id="host-card-title" className="mt-3 text-3xl font-black tracking-[-0.045em]">Host a room</h2>
-              <p className="mt-3 max-w-md text-sm leading-7 text-muted-foreground">Create the party, share its code or QR, manage the queue, and pair a separate TV browser for playback.</p>
-              <Button asChild size="lg" className="mt-auto h-12 w-full rounded-xl pt-0 font-bold shadow-[0_12px_40px_rgba(255,35,105,.2)]">
-                <Link href="/host">Start a room <ArrowRight className="ml-1 size-5" aria-hidden="true" /></Link>
-              </Button>
+              <p className="mt-3 max-w-lg text-sm leading-7 text-muted-foreground">Create or resume your secure room, share the code, and control the paired playback screen.</p>
+              <HostCreateForm available={roomCreationAvailable} variant="launch" />
             </article>
 
             <JoinForm variant="launch" />
           </div>
 
-          <p className="mx-auto mt-6 flex max-w-5xl items-center justify-center gap-2 text-center text-sm text-[#a99ca4]">
+          <p className="mx-auto mt-6 flex max-w-5xl items-center justify-center gap-2 text-center text-sm text-[#b9adb3]">
             <Radio className="size-4 shrink-0 text-[#ffb33c]" aria-hidden="true" />
-            Rooms, shared songs, TV playback, and local Microphone Studio are live.
+            No app or account required for the web MVP.
           </p>
-        </section>
-
+        </div>
+      </section>
+      <main>
         <section id="how-it-works" className="content-wrap scroll-mt-24 py-16 md:py-24" aria-labelledby="how-title">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>

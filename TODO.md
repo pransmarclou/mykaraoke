@@ -40,9 +40,10 @@
   preflight, then fill the named physical iPhone, Android, Windows, TV-browser,
   Bluetooth, latency, disconnect, and Firefox evidence gaps. API detection is
   not device acceptance.
-- Phase 10 security gate: response hardening and runtime dependency audit pass.
-  Design and test a nonce-based CSP for the inline theme bootstrap, official
-  YouTube origins, thumbnails, and Supabase Realtime before enforcement. Do not
+- Phase 10 security gate: response hardening, runtime dependency audit, and an
+  enforced per-request nonce CSP pass locally (production build). Recheck the
+  CSP on the deployed HTTPS origin, including `upgrade-insecure-requests`,
+  Realtime on the hosted Supabase project, and Safari/Firefox/TV browsers. Do not
   apply npm's suggested breaking downgrade for the dev-only
   `eslint-config-next -> braces` advisory; recheck for a compatible upstream
   release.

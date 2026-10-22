@@ -4,15 +4,17 @@ import { expect, test } from "@playwright/test";
 test("landing page routes to the two entry experiences", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    /Your songs\.\s*Your stage\.\s*Your party\./,
+    /Your songs\.\s*Your stage\./,
   );
   await expect(page.getByRole("heading", { name: "Host a room" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Room code" })).toBeEnabled();
   await expect(page.getByRole("textbox", { name: "Your display name" })).toBeEnabled();
-  await expect(page.getByText("Rooms, shared songs, TV playback, and local Microphone Studio are live.")).toBeVisible();
+  await expect(page.getByText("No app or account required for the web MVP.")).toBeVisible();
 
-  await page.getByRole("link", { name: "Start a room" }).click();
-  await expect(page).toHaveURL(/\/host$/);
+  await expect(page.getByRole("button", { name: "Start session" })).toBeEnabled();
+  // Shell verification stays read-only. Room creation is covered only by the
+  // separately allowlisted hosted integration journey.
+  await page.goto("/host");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Set the stage for everyone.");
   await expect(page.getByRole("button", { name: "Create a room" })).toBeEnabled();
 
@@ -127,7 +129,7 @@ test("owner branding loads on landing and host pages", async ({ page }) => {
     await expect
       .poll(() => brand.locator("img").evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0)))
       .toBe(true);
-    await expect(page.locator('main img[src*="microphone-logo"], main img[src*="mykaraoke-wordmark"]').first()).toBeVisible();
+    await expect(page.locator('img[src*="microphone-logo"], img[src*="mykaraoke-wordmark"]').first()).toBeVisible();
     expect(await page.locator("body").evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--primary").trim())).toBe("#d92362");
   }
 });

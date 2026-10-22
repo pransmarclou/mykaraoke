@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, test } from "node:test";
 import { getDb } from "../../src/lib/db";
+import { RemoteMicError, sendRemoteMicSignal } from "../../src/lib/microphone/remote-state";
+import { joinRoom } from "../../src/lib/rooms/guests";
 import { createHostRoom } from "../../src/lib/rooms/repository";
 import { addQueueItem, queueSnapshot } from "../../src/lib/songs/queue";
 import { hostPlaybackCommand, issueTvPairCode, pairTv, playbackSnapshot, PlaybackError, tvPlayerEvent, tvRoomAccess } from "../../src/lib/playback/state";
@@ -34,15 +36,29 @@ test("TV pairing uses a short-lived code and rotates device authority", async ()
   assert.equal(await tvRoomAccess(host.room.code, second.credential), host.room.id);
 });
 
+test("pairing a display auto-cues an already saved room queue", async () => {
+  const host = await createHostRoom(); rooms.push(host.room.id);
+  const searchResultId = await fixtureSong("fBcDeFgHi09");
+  await addQueueItem({ roomId: host.room.id, role: "host", searchResultId, singerName: "Host", requestKey: randomUUID() });
+
+  const paired = await pairTv(host.room.code, await issueTvPairCode(host.room.id));
+  assert.equal(paired.autoStarted, true);
+  const started = await playbackSnapshot(host.room.id);
+  assert.equal(started.current?.youtubeId, "fBcDeFgHi09");
+  assert.equal(started.desired, "play");
+  assert.equal(started.observed, "cued");
+  assert.equal(started.queuedCount, 0);
+});
+
 test("host commands, TV events, and queue advancement are atomic and idempotent", async () => {
   const host = await createHostRoom(); rooms.push(host.room.id);
+  await assert.rejects(hostPlaybackCommand(host.room.id, "start", randomUUID()), (error: unknown) => error instanceof PlaybackError && error.reason === "no_device");
+  const paired = await pairTv(host.room.code, await issueTvPairCode(host.room.id));
   const firstSong = await fixtureSong("fBcDeFgHi01");
   const secondSong = await fixtureSong("fBcDeFgHi02");
   for (const searchResultId of [firstSong, secondSong]) {
     await addQueueItem({ roomId: host.room.id, role: "host", searchResultId, singerName: "Host", requestKey: randomUUID() });
   }
-  await assert.rejects(hostPlaybackCommand(host.room.id, "start", randomUUID()), (error: unknown) => error instanceof PlaybackError && error.reason === "no_device");
-  const paired = await pairTv(host.room.code, await issueTvPairCode(host.room.id));
   const key = randomUUID();
   const started = await hostPlaybackCommand(host.room.id, "start", key);
   assert.equal(started.current?.youtubeId, "fBcDeFgHi01");
@@ -53,6 +69,9 @@ test("host commands, TV events, and queue advancement are atomic and idempotent"
   assert.equal((await queueSnapshot(host.room.id)).items.length, 1);
   assert.equal((await hostPlaybackCommand(host.room.id, "start", key)).version, started.version);
   await assert.rejects(hostPlaybackCommand(host.room.id, "skip", key), (error: unknown) => error instanceof PlaybackError && error.reason === "invalid");
+  const blocked = await tvPlayerEvent(host.room.id, paired.credential, started.current!.id, "blocked");
+  assert.equal(blocked.observed, "blocked");
+  assert.equal(blocked.desired, "play");
   const playing = await tvPlayerEvent(host.room.id, paired.credential, started.current!.id, "playing");
   assert.equal(playing.observed, "playing");
   const paused = await hostPlaybackCommand(host.room.id, "pause", randomUUID());
@@ -83,4 +102,32 @@ test("public database roles cannot access playback state or pairing data", async
       } finally { await client.query("rollback"); client.release(); }
     }
   }
+});
+
+test("only the guest who requested the current song can signal a phone microphone", async () => {
+  const host = await createHostRoom(); rooms.push(host.room.id);
+  const owner = await joinRoom(host.room.code, "Singer", undefined);
+  const other = await joinRoom(host.room.code, "Other guest", undefined);
+  const searchResultId = await fixtureSong("fBcDeFgHi03");
+  await addQueueItem({ roomId: host.room.id, role: "guest", guestId: owner.guest.id, searchResultId, singerName: owner.guest.label, requestKey: randomUUID() });
+  await pairTv(host.room.code, await issueTvPairCode(host.room.id));
+  const started = await playbackSnapshot(host.room.id);
+  assert.equal(started.current?.requestedBy, owner.guest.id);
+  const itemId = started.current!.id;
+  const sessionId = randomUUID();
+  const offer = { kind: "offer" as const, itemId, sessionId, description: { type: "offer" as const, sdp: "v=0" } };
+  const sent = await sendRemoteMicSignal({ roomId: host.room.id, role: "guest", guestId: owner.guest.id, signal: offer });
+  assert.equal(sent.from, "guest");
+  assert.equal(sent.guestId, owner.guest.id);
+  await assert.rejects(
+    sendRemoteMicSignal({ roomId: host.room.id, role: "guest", guestId: other.guest.id, signal: offer }),
+    (error: unknown) => error instanceof RemoteMicError && error.reason === "forbidden",
+  );
+  const muted = await sendRemoteMicSignal({ roomId: host.room.id, role: "host", signal: { kind: "host-mute", itemId, sessionId, guestId: owner.guest.id, muted: true } });
+  assert.equal(muted.from, "host");
+  assert.equal(muted.kind, "host-mute");
+  await assert.rejects(
+    sendRemoteMicSignal({ roomId: host.room.id, role: "host", signal: { kind: "host-mute", itemId, sessionId, guestId: other.guest.id, muted: false } }),
+    (error: unknown) => error instanceof RemoteMicError && error.reason === "forbidden",
+  );
 });

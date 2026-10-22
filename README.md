@@ -65,9 +65,11 @@ server-only hosted PostgreSQL connection as `DATABASE_URL`, the project URL as
 of client code and Git. `cp -n` leaves an existing `.env.local` untouched.
 Apply additive migrations to the intended hosted project through a reviewed
 migration step; never point a development command at an unrelated project.
-The hosted MVP now has the `party_theme` column required by queue and playback
-snapshots. Apply `20261020070000_party_theme.sql` to every other target before
-deploying this code there, and reconcile the hosted migration history.
+The hosted MVP must include the `party_theme` column and the remote microphone
+Realtime policy required by current queue/playback clients. Apply
+`20261020070000_party_theme.sql` and
+`20261021203000_remote_microphone_realtime.sql` to every target before enabling
+the corresponding features, and reconcile the hosted migration history.
 Localhost invites remain same-computer previews; phones need the deployed HTTPS
 origin.
 
@@ -238,6 +240,23 @@ fixed reactions. The server validates the room session and limits each actor to
 six reactions per ten seconds. The event is not stored; the TV validates it,
 shows it for 3.5 seconds, and honors reduced-motion preferences. This feature
 does not calculate or change a score.
+
+When the current song was added by a guest, that same guest sees an explicit
+**Enable my microphone** action on the phone Stage panel. Permission is never
+requested automatically. After opt-in, WebRTC carries audio directly to the
+host browser; an unguessable Supabase Realtime capability topic carries only
+short-lived, server-authorized offer/answer/ICE and mute messages. The host
+receives the stream muted and can unmute or mute it independently. The guest
+retains a separate self-mute and can stop capture at any time; capture is also
+stopped when the current song changes. MyKaraoke does not record or persist
+this audio.
+
+Direct browser candidates can work on reachable local networks. For routed
+networks, configure `WEBRTC_STUN_URL` and production-grade short-lived TURN
+credentials using the variables documented in `.env.example`. This is an
+experimental single-singer path to the host browser, not the paired TV, and it
+has not yet passed real phone/browser, latency, feedback, dropout, or TURN
+verification. Use headphones on the host while testing to reduce feedback.
 
 Fair singer rotation is off by default. When enabled, the server arranges only
 waiting songs into stable singer rounds while preserving each singer's request

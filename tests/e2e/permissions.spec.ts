@@ -65,6 +65,7 @@ test("host turns a guest phone into a TV remote and can take it back", async ({ 
 
     await permissions.getByRole("switch", { name: "Guest remote control" }).click();
     await expect(permissions.getByRole("switch", { name: "Guest remote control" })).toHaveAttribute("aria-checked", "true");
+    await guest.getByRole("tab", { name: "Stage" }).click();
     await expect(guest.getByText("Your phone is a remote for the TV")).toBeVisible({ timeout: 10_000 });
     await guest.getByTestId("playback-remote").getByRole("button", { name: "Start next song" }).click();
     await expect(tv.getByRole("heading", { name: title })).toBeVisible({ timeout: 10_000 });

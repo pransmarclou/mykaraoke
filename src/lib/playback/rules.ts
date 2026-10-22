@@ -1,6 +1,10 @@
 export type PlayerEvent = "playing" | "paused" | "blocked" | "error" | "ended";
 export type ObservedPlayerState = "idle" | "cued" | "playing" | "paused" | "blocked" | "error";
 
+export function shouldAutoCueAfterPair(currentItemId: string | null, queuedCount: number): boolean {
+  return currentItemId === null && queuedCount > 0;
+}
+
 export function commandReplayDecision(
   previousAction: string | undefined,
   requestedAction: string,

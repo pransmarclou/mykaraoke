@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { commandReplayDecision, playerEventTransition } from "../../src/lib/playback/rules";
+import { commandReplayDecision, playerEventTransition, shouldAutoCueAfterPair } from "../../src/lib/playback/rules";
+
+test("pairing auto-cues only when a waiting queue exists and no song is current", () => {
+  assert.equal(shouldAutoCueAfterPair(null, 2), true);
+  assert.equal(shouldAutoCueAfterPair(null, 0), false);
+  assert.equal(shouldAutoCueAfterPair("current", 2), false);
+});
 
 test("host command keys replay only the same action", () => {
   assert.equal(commandReplayDecision(undefined, "start"), "execute");

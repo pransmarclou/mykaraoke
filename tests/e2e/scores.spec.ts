@@ -51,6 +51,7 @@ test("host and guest rate a performance and the TV shows the leaderboard", async
     await guest.getByRole("textbox", { name: "Your display name" }).fill("Fan");
     await guest.getByRole("button", { name: "Join room" }).click();
     await expect(guest).toHaveURL(new RegExp(`/room/${code}$`), { timeout: 15_000 });
+    await guest.getByRole("tab", { name: "Scores" }).click();
     await expect(guest.getByText("Ratings open when the first song starts.")).toBeVisible();
 
     await page.getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);

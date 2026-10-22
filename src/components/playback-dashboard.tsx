@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MonitorPlay, Pause, Play, SkipForward } from "lucide-react";
 import { RoomReactions } from "@/components/room-reactions";
+import { RemoteSingerMicrophone } from "@/components/remote-singer-microphone";
+import { guestOwnsCurrentMicrophone } from "@/lib/microphone/remote-rules";
 import type { PlaybackSnapshot, HostPlaybackAction } from "@/lib/playback/state";
 import { singerLabel } from "@/lib/songs/singers";
 
@@ -12,7 +14,7 @@ async function readError(response: Response): Promise<string> {
   catch { return "Please try again."; }
 }
 
-export function PlaybackDashboard({ code, role, tvUrl }: { code: string; role: "host" | "guest"; tvUrl?: string }) {
+export function PlaybackDashboard({ code, role, guestId, tvUrl }: { code: string; role: "host" | "guest"; guestId?: string; tvUrl?: string }) {
   const [state, setState] = useState<PlaybackSnapshot | null>(null);
   const [pairCode, setPairCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -77,6 +79,9 @@ export function PlaybackDashboard({ code, role, tvUrl }: { code: string; role: "
     {!state && connection === "loading" ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading playback state…</p> : null}
     {state && connection !== "ended" ? <>
       {state.current ? <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4"><p className="text-xs font-bold uppercase tracking-wider text-[#ffc16f]">{state.observed === "playing" ? "Now playing" : "Current song"}</p><p className="mt-2 font-bold text-white">{state.current.title}</p><p className="mt-1 text-sm text-muted-foreground">Singer: {singerLabel(state.current)}</p><p className="mt-2 text-sm text-[#ffc16f]">Player: {state.observed}{state.observed === "error" ? ` (YouTube error ${state.errorCode ?? "unknown"})` : ""}</p></div> : <p className="mt-5 text-sm text-muted-foreground">No song is on stage yet.</p>}
+      {state.current?.requestedBy && (role === "host" || guestOwnsCurrentMicrophone(state.current.requestedBy, guestId))
+        ? <RemoteSingerMicrophone key={`${state.current.id}:${state.current.requestedBy}:${role}`} code={code} role={role} guestId={state.current.requestedBy} song={state.current} />
+        : null}
       {state.next ? <p className="mt-4 text-sm text-muted-foreground">Up next: <span className="text-white">{state.next.title}</span> · {singerLabel(state.next)}</p> : null}
       {canReact ? <RoomReactions code={code} enabled={Boolean(state.current) && connection === "connected"} /> : <p className="mt-5 border-t border-white/10 pt-5 text-xs text-muted-foreground">The host has turned reactions off.</p>}
       {canRemote ? <div data-testid="playback-remote">

@@ -85,7 +85,7 @@ function loadPlayerApi(): Promise<PlayerApi> {
   return playerApiPromise;
 }
 
-function YoutubeStage({ song, desired, canActivate, onEvent }: { song: PlaybackSong; desired: PlaybackSnapshot["desired"]; canActivate: boolean; onEvent: (itemId: string, event: TvPlayerEvent, errorCode?: number) => void }) {
+function YoutubeStage({ song, desired, canActivate, autoActivate, onEvent }: { song: PlaybackSong; desired: PlaybackSnapshot["desired"]; canActivate: boolean; autoActivate: boolean; onEvent: (itemId: string, event: TvPlayerEvent, errorCode?: number) => void }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
   const activatedRef = useRef(false);
@@ -116,7 +116,7 @@ function YoutubeStage({ song, desired, canActivate, onEvent }: { song: PlaybackS
             } else if (event.data === 2) onEvent(song.id, "paused");
           },
           onError: (event) => { if (mounted) onEvent(song.id, "error", event.data); },
-          onAutoplayBlocked: () => { if (mounted) onEvent(song.id, "blocked"); },
+          onAutoplayBlocked: () => { if (mounted) { activatedRef.current = false; setActivation(false); onEvent(song.id, "blocked"); } },
         },
       });
     }).catch(() => { if (mounted) { setLoadError("YouTube could not load. Ask the host to skip this song or try again."); onEvent(song.id, "error", 0); } });
@@ -128,6 +128,13 @@ function YoutubeStage({ song, desired, canActivate, onEvent }: { song: PlaybackS
     if (desired === "pause") playerRef.current?.pauseVideo();
     else playerRef.current?.playVideo();
   }, [desired, ready]);
+
+  useEffect(() => {
+    if (!autoActivate || !canActivate || !ready || activatedRef.current) return;
+    activatedRef.current = true;
+    setActivation(true);
+    if (desired === "play") playerRef.current?.playVideo();
+  }, [autoActivate, canActivate, desired, ready]);
 
   function activate() {
     if (!canActivate) return;
@@ -144,7 +151,7 @@ function YoutubeStage({ song, desired, canActivate, onEvent }: { song: PlaybackS
   </div>;
 }
 
-function SingerStage({ song, desired, onEvent }: { song: PlaybackSong; desired: PlaybackSnapshot["desired"]; onEvent: (itemId: string, event: TvPlayerEvent, errorCode?: number) => void }) {
+function SingerStage({ song, desired, autoActivate, onEvent }: { song: PlaybackSong; desired: PlaybackSnapshot["desired"]; autoActivate: boolean; onEvent: (itemId: string, event: TvPlayerEvent, errorCode?: number) => void }) {
   const [remaining, setRemaining] = useState(SINGER_COUNTDOWN_SECONDS);
 
   useEffect(() => {
@@ -157,7 +164,7 @@ function SingerStage({ song, desired, onEvent }: { song: PlaybackSong; desired: 
 
   return (
     <div className="relative">
-      <YoutubeStage song={song} desired={desired} canActivate={remaining === 0} onEvent={onEvent} />
+      <YoutubeStage song={song} desired={desired} canActivate={remaining === 0} autoActivate={autoActivate} onEvent={onEvent} />
       {remaining > 0 ? (
         <div className="absolute inset-x-0 top-0 z-10 grid aspect-video min-h-[240px] place-items-center rounded-2xl border border-[#ffad69]/40 bg-[#0b0d16]/95 p-8 text-center" role="status" aria-live="polite" data-testid="singer-countdown">
           <div>
@@ -303,7 +310,7 @@ function TvJoinCard({ code, qrDataUrl }: { code: string; qrDataUrl: string }) {
 
 function TvUtilityRail({ code, qrDataUrl, state }: { code: string; qrDataUrl: string; state: PlaybackSnapshot }) {
   const [tab, setTab] = useState<TvRailTab>("queue");
-  return <aside className="flex min-h-[32rem] min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#111219]/95 shadow-[0_24px_70px_rgba(0,0,0,.22)] xl:h-[calc(100vh-9.5rem)]" aria-label="TV party information">
+  return <aside className="flex min-h-[32rem] min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#111219]/95 shadow-[0_24px_70px_rgba(0,0,0,.22)]" aria-label="TV party information" data-testid="tv-utility-rail">
     <div className="grid grid-cols-3 border-b border-white/10" role="tablist" aria-label="Party information">
       {TV_RAIL_TABS.map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} aria-controls="tv-party-panel" id={`tv-tab-${item.id}`} onClick={() => setTab(item.id)} data-tv-focus className={`min-h-16 border-b-2 px-2 text-sm font-black outline-none transition focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#ffc16f] ${tab === item.id ? "border-[#ff6e8f] text-[#ffc16f]" : "border-transparent text-muted-foreground hover:text-white"}`}>{item.label}</button>)}
     </div>
@@ -318,7 +325,7 @@ function NowPlayingSummary({ state }: { state: PlaybackSnapshot }) {
   if (!state.current) return null;
   return <section className="mt-4 min-w-0 rounded-2xl border border-white/10 bg-white/[0.05] p-5" aria-labelledby="tv-now-playing-title">
     <p className="eyebrow">On stage</p>
-    <h1 id="tv-now-playing-title" className="mt-3 break-words text-[clamp(1.5rem,2.25vw,2.75rem)] leading-[1.04] font-black tracking-[-0.035em] [overflow-wrap:anywhere]">{state.current.title}</h1>
+    <h1 id="tv-now-playing-title" className="mt-3 break-words text-[clamp(1.25rem,1.65vw,2rem)] leading-[1.08] font-black tracking-[-0.025em] [overflow-wrap:anywhere]" data-testid="tv-now-playing-title">{state.current.title}</h1>
     <div className="mt-3 flex flex-wrap items-center gap-3"><p className="break-words text-[clamp(1rem,1.35vw,1.35rem)] font-bold text-[#ffe4cd] [overflow-wrap:anywhere]">{singerLabel(state.current)}</p><p className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-muted-foreground">Player state: {state.observed}</p></div>
     {state.observed === "blocked" ? <p role="alert" className="mt-3 text-sm leading-6 text-[#ffc16f]">Playback was blocked. Press Play in the YouTube player on this display.</p> : null}
     {state.observed === "error" ? <p role="alert" className="mt-3 text-sm leading-6 text-[#ffb0a2]">YouTube could not play this video (error {state.errorCode ?? "unknown"}). Ask the host to skip it.</p> : null}
@@ -333,6 +340,11 @@ export function TvStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }
   const [reactions, setReactions] = useState<RoomReactionEvent[]>([]);
   const [fullscreen, setFullscreen] = useState(false);
   const [startNotice, setStartNotice] = useState<TvStartNotice | null>(null);
+  const [autoActivate] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.sessionStorage.getItem(`mykaraoke:tv-autoplay:${code}`) === "1"; }
+    catch { return false; }
+  });
   const endedRef = useRef(false);
   const reactionTimers = useRef(new Map<string, number>());
   const observedCurrentRef = useRef<{ initialized: boolean; id: string | null }>({ initialized: false, id: null });
@@ -503,18 +515,18 @@ export function TvStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }
   }, [code]);
 
   return <main className="mx-auto flex min-h-screen max-w-[120rem] flex-col px-5 py-5 sm:px-8 lg:px-10">
-    <header className="flex flex-wrap items-center justify-between gap-4 pb-4">
-      <Image src="/brand/mykaraoke-wordmark.png" alt="MyKaraoke" width={2172} height={724} className="h-auto w-44 rounded-xl bg-[#fff2e5] p-2 object-contain sm:w-56" priority />
-      <div className="order-last min-w-0 basis-full lg:order-none lg:flex-1 lg:basis-auto"><TvStageBanner code={code} notice={startNotice} /></div>
-      <div className="flex items-center gap-2 sm:gap-3">
-        <button type="button" disabled title="Microphone controls stay on the host device." className="flex min-h-12 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-muted-foreground disabled:opacity-70"><Mic2 className="size-5" aria-hidden="true" />Mic on host</button>
+    <header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 pb-4 md:grid-cols-[auto_minmax(0,1fr)_auto] md:gap-4" data-testid="tv-stage-header">
+      <Image src="/brand/mykaraoke-wordmark.png" alt="MyKaraoke" width={2172} height={724} className="h-auto w-36 rounded-xl bg-[#fff2e5] p-2 object-contain sm:w-44 md:w-56" priority data-testid="tv-stage-logo" />
+      <div className="col-span-2 min-w-0 md:col-span-1"><TvStageBanner code={code} notice={startNotice} /></div>
+      <div className="row-start-1 flex items-center justify-self-end gap-2 sm:gap-3 md:col-start-3" data-testid="tv-stage-controls">
+        <button type="button" disabled aria-label="Microphone controls stay on the host device" title="Microphone controls stay on the host device." className="flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 text-sm font-bold text-muted-foreground disabled:opacity-70 sm:px-4"><Mic2 className="size-5" aria-hidden="true" /><span className="hidden sm:inline">Mic on host</span></button>
         <button type="button" onClick={() => void toggleFullscreen()} data-tv-focus className="grid size-12 place-items-center rounded-2xl border border-white/15 bg-white/5 text-white outline-none transition hover:bg-white/10 focus-visible:border-[#ffad69] focus-visible:ring-4 focus-visible:ring-[#ffad69]/40" aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}>{fullscreen ? <Minimize2 className="size-5" aria-hidden="true" /> : <Maximize2 className="size-5" aria-hidden="true" />}</button>
       </div>
     </header>
     {ended ? <div className="grid flex-1 place-items-center py-12 text-center"><div><p className="eyebrow">Session finished</p><p role="alert" className="mt-5 text-3xl font-black text-[#ffb0a2]">This room ended or expired.</p><p className="mt-3 text-muted-foreground">Playback has stopped. Ask the host for a new room.</p></div></div> : null}
     {!state && !ended ? <div className="grid flex-1 place-items-center py-12"><p role="status" className="flex items-center gap-3 text-lg text-muted-foreground"><span className="size-3 animate-pulse rounded-full bg-primary" aria-hidden="true" />Connecting to the room…</p></div> : null}
     {state && !ended ? <div className="grid min-w-0 flex-1 items-stretch gap-5 pb-5 xl:grid-cols-[minmax(0,1.72fr)_minmax(22rem,0.62fr)]">
-      <div className="relative min-w-0">{state.current ? <div className="rounded-[1.75rem] border border-white/10 bg-[#111219]/80 p-4 shadow-[0_24px_70px_rgba(0,0,0,.22)] sm:p-5"><SingerStage key={state.current.id} song={state.current} desired={state.desired} onEvent={onEvent} /><NowPlayingSummary state={state} /></div> : <WaitingStage code={code} qrDataUrl={qrDataUrl} />}
+      <div className="relative min-w-0" data-testid="tv-stage-column">{state.current ? <div className="rounded-[1.75rem] border border-white/10 bg-[#111219]/80 p-4 shadow-[0_24px_70px_rgba(0,0,0,.22)] sm:p-5"><SingerStage key={state.current.id} song={state.current} desired={state.desired} autoActivate={autoActivate} onEvent={onEvent} /><NowPlayingSummary state={state} /></div> : <WaitingStage code={code} qrDataUrl={qrDataUrl} />}
         <div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 h-40 overflow-hidden" aria-live="polite" aria-label="Party reactions">
           {reactions.map((reaction, index) => <div key={reaction.id} className="tv-reaction absolute bottom-0 rounded-2xl border border-white/20 bg-[#17101d]/90 px-4 py-2 shadow-2xl motion-reduce:animate-none" style={{ left: `${8 + ((index * 17) % 72)}%` }}><span className="text-4xl" aria-hidden="true">{reactionEmoji(reaction.reaction)}</span><span className="ml-2 text-sm font-bold text-white">{reaction.sender}</span></div>)}
         </div>

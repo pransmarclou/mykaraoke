@@ -4,9 +4,9 @@ import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PartyThemePicker } from "@/components/party-theme-picker";
 
-export function SiteHeader({ showThemePicker = true }: { showThemePicker?: boolean }) {
+export function SiteHeader({ showThemePicker = true, variant = "default" }: { showThemePicker?: boolean; variant?: "default" | "hero" }) {
   return (
-    <header className="content-wrap flex h-20 items-center justify-between gap-4 border-b border-white/8">
+    <header className={`${variant === "hero" ? "home-content-wrap" : "content-wrap"} relative z-20 flex h-20 items-center justify-between gap-4 ${variant === "hero" ? "border-transparent" : "border-b border-white/8"}`}>
       <Link
         href="/"
         aria-label="MyKaraoke home"

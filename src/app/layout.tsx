@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import "./theme.css";
 import { Geist } from "next/font/google";
@@ -23,9 +24,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="en"
@@ -35,6 +37,7 @@ export default function RootLayout({
       <head>
         <script
           id="party-theme-boot"
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: PARTY_THEME_BOOT_SCRIPT }}
         />
       </head>

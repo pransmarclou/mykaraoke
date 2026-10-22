@@ -14,7 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     const body = await request.json().catch(() => null) as { pairCode?: unknown } | null;
     if (typeof body?.pairCode !== "string") throw new PlaybackError("pair_invalid");
     const paired = await pairTv(code, body.pairCode.trim().toUpperCase());
-    const response = NextResponse.json({ paired: true }, { headers: { "Cache-Control": "no-store" } });
+    const response = NextResponse.json({ paired: true, autoStarted: paired.autoStarted }, { headers: { "Cache-Control": "no-store" } });
     response.cookies.set(TV_COOKIE_NAME, paired.credential, {
       httpOnly: true, sameSite: "lax", secure: configuredAppOrigin().startsWith("https:"), path: "/",
       maxAge: Math.max(1, Math.floor((paired.expiresAt.getTime() - Date.now()) / 1000)),

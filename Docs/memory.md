@@ -54,7 +54,9 @@ to evidence or code rather than restating large documents.
 - Core backend: Supabase PostgreSQL, Realtime, optional Auth, and RLS
 - Song source/playback: Official YouTube Data API v3 and IFrame Player API
 - Local audio: MediaDevices and Web Audio APIs
-- Remote phone microphone: Later experimental WebRTC phase
+- Remote phone microphone: Experimental web slice implemented for the guest
+  who requested the current song; real devices, latency, feedback, dropout,
+  and TURN remain unverified
 - Default experience: Dark, premium, social, playful, and responsive
 - Product distinction: Strong microphone support and dependable multi-device
   synchronization
@@ -95,7 +97,7 @@ them at the phase that first needs them.
 | Anonymous participant identity/session design | Guest joining | Resolved locally: per-browser random HttpOnly guest credential, SHA-256 digest in `room_members`, scoped to one active room |
 | Deployment Vercel project and environments | Launch readiness | Resolved for the MVP production environment: `nookstudio/mykaraoke` deploys `main` to the production aliases; preview-environment policy remains open |
 | Analytics and error-reporting provider | Observability | Open |
-| TURN provider and operating budget | Optional native N3 remote microphone | Open |
+| TURN provider and operating budget | Experimental web remote microphone and native N3 | Open; same-network/direct paths only until configured and verified |
 | Physical device test inventory | Audio/compatibility | Open |
 | Native store products, pricing, and billing model | Native N4 | Partially resolved: Premium removes MyKaraoke ads and provides unlimited MyKaraoke song credits; product IDs, price, billing period, trials, and restore rules remain open |
 | Free/Premium entitlement boundary | Native N4 | Partially resolved: Free starts with 10 song credits and a verified, voluntary Google rewarded ad grants 10 more; reset window, frequency cap, no-fill fallback, and account/device scope remain open |
@@ -1411,6 +1413,189 @@ test-project, browser/device, and audio-hardware matrices are completed.
 - Remaining boundary: Real QR distance/scan, ticker legibility, notice timing,
   reduced-motion presentation, and long-title behavior still require the named
   physical smart-TV/browser matrix before Phase 10 acceptance.
+
+## Phase 10 TV header space correction — 2026-10-21
+
+- Owner report: The paired-TV screenshot showed the logo, join ticker, and
+  mic/fullscreen controls wrapping into three separate rows, leaving most of
+  the top-right header empty and pushing the stage downward.
+- Completed: The header now uses an explicit responsive grid. At 768px and
+  wider, the wordmark, ticker/current-song notice, and controls share one row;
+  below that width, the logo and controls stay together and the ticker uses a
+  second full-width row. The mic label hides only on the narrowest view while
+  its accessible name and disabled explanation remain available.
+- Coverage: The protected paired-TV journey now measures all three header
+  groups and requires them to occupy the same row on a wide viewport. This
+  preserves DOM/focus order, the persistent QR rail, and the existing ticker
+  and notification behavior without adding state or another render boundary.
+- Verification: TypeScript, lint, 56/56 unit checks, optimized production
+  build, 20/20 focused desktop/mobile Chromium shell checks, and `git diff
+  --check` pass. The paired header-row assertion is authored but remains
+  blocked from execution until a separately allowlisted hosted test project is
+  configured.
+
+## Phase 10 active-TV vertical balance correction — 2026-10-21
+
+- Owner report: In the active-song screenshot, a long karaoke title dominated
+  the summary card and the right utility rail stopped above the bottom of the
+  taller stage card.
+- Completed: The active title now tops out at 32 CSS pixels with tighter but
+  readable tracking and continues to wrap anywhere for unusually long names.
+  The utility rail no longer uses a viewport-derived fixed height; it stretches
+  with the grid row so its bottom edge matches the active stage column while
+  keeping the join QR pinned at the bottom.
+- Coverage: The protected paired-TV journey now caps the computed title size
+  and, at 1280px or wider, requires the stage and utility-rail bottoms to align.
+  No player, queue, authorization, or polling behavior changed.
+- Verification: TypeScript, lint, 56/56 unit checks, optimized production
+  build, 20/20 focused desktop/mobile Chromium shell checks, and `git diff
+  --check` pass. The paired measurements remain authored but unrun without the
+  separately allowlisted hosted test project.
+
+## Phase 10 experimental current-singer phone microphone — 2026-10-21
+
+- Owner direction: When a guest-added song is current, let that same guest
+  control a phone microphone and let the host mute or unmute the received
+  voice. This explicitly advances the previously deferred experimental web
+  WebRTC slice without accepting the outstanding Phase 7–9 hardware gates.
+- Authorization: Playback snapshots now carry the existing queue requester's
+  scoped member ID. The control is rendered only to that member, and every
+  signaling mutation rechecks that the song is still current and owned by the
+  authenticated guest. A different guest, a stale song, or a mismatched host
+  target is rejected server-side.
+- Privacy and transport: The guest must tap **Enable my microphone** before the
+  browser requests permission. Supabase Realtime transports bounded,
+  rate-limited offer/answer/ICE/mute metadata on a server-derived unguessable
+  current-song topic released only to the host and owning guest; audio uses
+  WebRTC directly to the host and is never stored. Capture and peer state end
+  on guest stop, song change, or component teardown.
+- Controls: The guest owns a persistent self-mute and stop action. The host
+  receives every new stream muted and can independently unmute or mute it. A
+  host unmute never overrides the guest's self-mute and cannot initiate phone
+  capture. Host-added songs and other guests do not receive this control.
+- Network boundary: Direct browser candidates are available without more
+  configuration. Optional server-only `WEBRTC_STUN_URL` and complete TURN
+  settings are returned only to authenticated room browsers. Production should
+  use short-lived TURN credentials rather than a permanent secret.
+- Verification: TypeScript, lint, and 60/60 unit checks pass. A hosted
+  integration test covers requester ownership and host mute authorization but
+  remains subject to the allowlisted test-project gate. No real phone-to-host
+  audio, cross-network TURN, latency, feedback, interruption, Safari/Android,
+  or Bluetooth behavior has been verified, so this remains experimental.
+- Deployment gate: The additive
+  `20261021203000_remote_microphone_realtime.sql` policy is authored but was not
+  applied because this checkout is not linked to a Supabase CLI project. The
+  deployed environment must also retain the existing 32+ character
+  `ROOM_RATE_LIMIT_SECRET`; local loopback uses a fixed development-only
+  capability key. STUN/TURN are not configured in the inspected local env.
+- Next exact action: Run the allowlisted hosted integration/browser journey,
+  apply the reviewed policy through the owned hosted migration workflow, then
+  measure a real phone-to-host connection with headphones before deciding
+  whether the control can be enabled by default in production.
+
+## Phase 10 immediate entry and queued-room playback slice — 2026-10-21
+
+- Owner direction: Translate the supplied reference screenshots into the
+  MyKaraoke landing and TV experience, and start music when a session already
+  has a saved queue.
+- Reference boundary: The supplied screenshots establish only the visible
+  full-height hero, two immediate entry choices, and stage/rail hierarchy. A
+  fresh REA browser scenario failed before navigation even though the REA
+  registration health check passed. No fresh evidence establishes reference
+  account-queue persistence or autoplay behavior.
+- Completed UI: The landing first view now uses MyKaraoke's original logo,
+  gradient tokens, copy, and owned videoke-family loop behind a strong contrast
+  treatment. Host and Join remain distinct accessible actions in the first
+  viewport. Start session now creates or resumes the current browser's host
+  room directly and navigates to its control surface.
+- Completed behavior: A successful TV pairing now checks the authoritative room
+  queue in the same transaction. If no song is current and queued items already
+  exist, it cues the first song and publishes the queue change. The paired TV
+  attempts playback after the singer countdown; a YouTube autoplay rejection
+  restores the existing visible Start Video fallback.
+- Account honesty: MyKaraoke still has no optional account identity or
+  cross-device saved-queue table. Browser-local favorites and the active room
+  queue must not be described as account sync. The owner-requested account
+  restore behavior remains a separate Phase 9 follow-up requiring an explicit
+  Supabase Auth/account boundary and migration.
+- Coverage: Added a pure auto-cue decision test and a hosted integration test
+  for pairing with a preloaded queue. The existing multi-context journey still
+  covers the empty-queue pairing path, so it continues to require an explicit
+  host start after songs are added later.
+- Verification: TypeScript and lint pass; 61/61 unit checks pass; the optimized
+  production build passes; and 20/20 desktop/mobile Chromium shell checks pass,
+  including WCAG A/AA scans and horizontal-overflow checks. The hosted
+  integration test remains authored but unrun without the separately
+  allowlisted hosted test project. Real YouTube autoplay behavior remains a
+  named device check because browser policy can still require user activation.
+
+## Phase 10 nonce-based Content Security Policy — 2026-10-21
+
+- Completed: `src/proxy.ts` (Next.js 16 Proxy) issues a fresh 128-bit nonce
+  per page request and enforces a Content-Security-Policy built by
+  `src/lib/security/csp.ts`. Next.js applies the nonce to its own scripts; the
+  root layout passes it to the inline party-theme bootstrap. Every route now
+  renders dynamically, which nonces require. API routes, static assets, media,
+  and router prefetches are excluded from the proxy.
+- Policy: scripts `'self'` + nonce + `'strict-dynamic'` (YouTube hosts only as a
+  fallback for browsers without it; `'unsafe-eval'` only in `next dev`);
+  styles `'self'` + nonce (dev adds `'unsafe-inline'`); `style-src-attr
+  'unsafe-inline'` for React style props; images self/data/blob/`i.ytimg.com`;
+  media self/blob; frames limited to the two YouTube player origins;
+  connect-src self plus the configured `SUPABASE_URL` https/wss origin;
+  `object-src 'none'`, `base-uri`/`form-action`/`frame-ancestors 'self'`.
+  `upgrade-insecure-requests` is added only when `APP_ORIGIN` is HTTPS.
+- Verification: TypeScript, lint, unit 65/65 (4 new CSP checks), and the
+  production build pass. Against a local `next start` build in the built-in
+  browser: `/`, `/compatibility`, `/join`, `/host`, and `/tv/[code]` send the
+  policy, every inline/script tag carries the per-request nonce, the nonce
+  changes per request, and the console shows no CSP violations. A real host →
+  TV journey (search with 12 thumbnails, add, pair, start) loaded the YouTube
+  IFrame API, its injected player scripts, and the player iframe without
+  violations. The test room was closed afterwards.
+- Not verified: The deployed HTTPS origin, Safari/Firefox/TV-browser CSP
+  handling, the experimental WebRTC microphone path under the policy, and
+  Realtime on browsers other than the built-in Chromium pane.
+- Next exact action: Deploy to a preview HTTPS origin, recheck headers and the
+  console on host/guest/TV, then continue the named device matrix.
+
+## Phase 10 phone-first guest room — 2026-10-21
+
+- Owner direction: Focus on the mobile guest experience and match the
+  reference's phone structure from an owner-supplied screenshot.
+- Reference boundary: Only the screenshot's information architecture was used
+  (room bar, search with Go, now-playing card, tabbed sections, ranked popular
+  list, floating cheer button). MyKaraoke's logo, colors, wording, and icons are
+  its own. Two visible reference controls were not built: the free daily
+  song-slot counter (monetization stays deferred to Native N4, F-06) and a
+  remote "make TV fullscreen" button (browsers only allow fullscreen from a
+  gesture on the TV device itself, so it would be a dishonest control).
+- Completed: `/room/[code]` now renders `GuestPhoneRoom`: sticky room bar with
+  code, guest name, and Leave; search with Go and singer/duet fields shown while
+  searching; a now-playing card that opens Stage; accessible tabs (Popular,
+  Queue, Stage, Scores, My songs, Favorites) whose inactive panels stay mounted
+  so the singer microphone and remote keep running; and a floating reaction
+  button. `useRoomSongs` now holds the shared queue/search/favorites logic used
+  by both the host panel and the phone layout; `GuestRoomConsole` was removed.
+- Popular: `GET /api/rooms/[code]/popular` (room members only) lists up to 20
+  songs requested in at least two different rooms in the last 30 days, cached
+  for 5 minutes, so one party's choices are never exposed. Adding one refreshes
+  it through the existing search boundary, like favorites. Rooms are deleted on
+  cleanup, so the list only reflects retained rooms.
+- Verification: TypeScript, lint, unit 65/65, and the production build pass.
+  In the built-in browser at 375×812 (dev server), a guest joined a test room
+  created over curl: Popular loaded a real entry and added it, My songs showed
+  "next up", search returned results with save/add, the now-playing card and
+  Stage tab (song, player state, microphone control, reactions, roster)
+  updated after a TV session paired, and the floating button sent Applause.
+  The test room was closed. Six browser specs were updated for the tabs and
+  remain unrun without the allowlisted hosted test project.
+- Environment note: When the built-in browser pane is hidden, React's
+  streamed-content reveal can stall on pages that suspend (the room page shows
+  "Loading MyKaraoke…"); it completes as soon as the pane paints. This is a
+  tooling artifact, not an app bug, but keep it in mind before diagnosing.
+- Not verified: Real iPhone/Android browsers, Safari's search-field styling,
+  on-screen keyboard behavior, and the floating button over the iOS toolbar.
 
 ## Session handoff template
 

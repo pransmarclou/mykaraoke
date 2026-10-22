@@ -27,9 +27,10 @@ test("a guest assigns a duet that appears on the host, guest, and paired TV", as
     await guest.getByRole("textbox", { name: "Your display name" }).fill("Alex");
     await guest.getByRole("button", { name: "Join room" }).click();
     await expect(guest).toHaveURL(new RegExp(`/room/${code}$`));
+    // Singer fields appear once a search starts on the phone layout.
+    await guest.getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await guest.getByRole("checkbox", { name: "Add a duet partner" }).check();
     await guest.getByRole("textbox", { name: "Duet partner name" }).fill("Sam");
-    await guest.getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await expect(guest.getByTestId("search-results").getByText(title)).toBeVisible();
     await guest.getByTestId("search-results").getByRole("button", { name: "Add" }).click();
     await expect(guest.getByTestId("queue-item")).toContainText("Alex & Sam");
