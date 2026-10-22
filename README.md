@@ -215,7 +215,19 @@ device session; pairing a new display revokes the prior one. The host starts a
 queued song and may pause, resume, or skip. Each newly cued singer gets a
 five-second ready screen before the TV enables **Start video**. Arrow keys move
 between TV actions, Enter selects the focused action, and Back exits fullscreen
-when supported by the browser. The TV reports actual player events;
+when supported by the browser. The active TV layout keeps long titles inside
+their panel and shows up to five ordered upcoming songs, the total queue count,
+and the top three rated performers. Its reference-informed utility rail switches
+between Up Next, Scores, and read-only song discovery while keeping the phone
+join QR visible; guests add discovered songs from a joined phone, so the paired
+display does not receive queue authority. A header banner continuously reminds
+the room to scan the QR or enter the code; when the TV observes a newly current
+song, that same space briefly announces its title and singer without covering
+the YouTube player. Reduced-motion browsers receive the same message without
+the scrolling animation. While the queue is empty, an original
+silent Filipino-family videoke loop plays behind the waiting card. It has no
+controls or audio, falls back to the existing gradient if playback is declined,
+and stops when reduced motion is requested. The TV reports actual player events;
 server transactions advance the queue on end or host skip. Guests see the
 current and next singer without receiving playback authority. Some videos
 reject embedding even after the Data API reports them eligible; the TV shows

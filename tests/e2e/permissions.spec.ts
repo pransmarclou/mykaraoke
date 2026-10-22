@@ -43,7 +43,11 @@ test("host turns a guest phone into a TV remote and can take it back", async ({ 
     await page.getByRole("button", { name: "Generate TV pairing code" }).click();
     await tv.getByRole("textbox", { name: "TV pairing code" }).fill((await page.getByTestId("tv-pair-code").textContent())!);
     await tv.getByRole("button", { name: "Pair this display" }).click();
-    await expect(tv.getByText("Waiting for the next song")).toBeVisible();
+    await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible();
+    const waitingVideo = tv.getByTestId("tv-waiting-video");
+    await expect(waitingVideo).toBeAttached();
+    await expect(waitingVideo.locator("source")).toHaveAttribute("src", "/media/tv-videoke-family-loop.mp4");
+    expect(await waitingVideo.evaluate((video: HTMLVideoElement) => ({ muted: video.muted, loop: video.loop, controls: video.controls }))).toEqual({ muted: true, loop: true, controls: false });
 
     const guest = await guestContext.newPage();
     await guest.goto(`/join?code=${code}`);

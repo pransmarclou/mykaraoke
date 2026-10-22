@@ -57,8 +57,9 @@ export function RoomScores({ code, variant = "panel" }: { code: string; variant?
     }
   }
 
+  const visibleLeaderboard = variant === "tv" ? state?.leaderboard.slice(0, 3) : state?.leaderboard;
   const leaderboard = <ol className="mt-3 space-y-2" data-testid="leaderboard">
-    {state?.leaderboard.map((entry, index) => <li key={entry.performer} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+    {visibleLeaderboard?.map((entry, index) => <li key={entry.performer} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
       <span className="w-6 font-mono text-sm font-black text-[#ffc16f]">{index + 1}.</span>
       <span className="min-w-0 flex-1 truncate font-semibold text-white">{entry.performer}</span>
       <span className="text-sm font-bold text-[#ffe4cd]">{stars(entry.average)}</span>
@@ -67,11 +68,14 @@ export function RoomScores({ code, variant = "panel" }: { code: string; variant?
   </ol>;
 
   if (variant === "tv") {
-    if (!state || state.leaderboard.length === 0) return null;
-    return <div className="mt-6 border-t border-white/10 pt-5" aria-labelledby="tv-leaderboard-title">
-      <p id="tv-leaderboard-title" className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground"><Trophy className="size-4 text-[#ffc16f]" aria-hidden="true" />Leaderboard</p>
-      {leaderboard}
-    </div>;
+    return <section aria-labelledby="tv-leaderboard-title">
+      <h2 id="tv-leaderboard-title" className="flex items-center gap-2 text-sm font-black text-white"><Trophy className="size-4 text-[#ffc16f]" aria-hidden="true" />Leaderboard</h2>
+      {connection === "ended" ? <p role="alert" className="mt-5 text-sm text-[#ffb0a2]">Scores are no longer available for this room.</p> : null}
+      {connection === "reconnecting" ? <p role="status" className="mt-5 text-sm text-[#ffc16f]">Scores connection interrupted. Reconnecting…</p> : null}
+      {!state && connection === "loading" ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading scores…</p> : null}
+      {state && state.leaderboard.length > 0 ? leaderboard : null}
+      {state && state.leaderboard.length === 0 ? <div className="grid min-h-52 place-items-center text-center"><div><Trophy className="mx-auto size-10 text-white/20" aria-hidden="true" /><p className="mt-4 text-sm font-semibold text-muted-foreground">No scores yet.</p><p className="mt-1 text-xs text-muted-foreground">Start singing to get on the board!</p></div></div> : null}
+    </section>;
   }
 
   return <section className="feature-panel rounded-[1.75rem] p-6 sm:p-8" aria-labelledby="scores-title">

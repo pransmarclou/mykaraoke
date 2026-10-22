@@ -2,7 +2,7 @@
 
 ## Implementation status
 
-As of 2026-10-20, Phase 10 is in build. Phase 9 browser-local song favorites,
+As of 2026-10-21, Phase 10 is in build. Phase 9 browser-local song favorites,
 ephemeral TV reactions, fair singer rotation, duet singer assignment, guest
 permissions/phone remote, and audience ratings with a live leaderboard as
 implemented slices. Three accessible themes now apply the owner-brand Stage
@@ -111,10 +111,21 @@ reacts. An optional account can later synchronize favorites and preferences.
 
 Runs a low-distraction fullscreen experience with the YouTube player, current
 singer, a short singer-ready countdown, next singer, playback-recovery prompts,
-and brief party reactions. Arrow keys move between the small set of display
-actions, Enter selects, and Back exits fullscreen where the browser reports the
-key. It shares room state but does not use mobile navigation or implicitly
-receive host authority.
+brief party reactions, and a persistent tabbed rail for Up Next, Scores, and
+read-only song discovery. The empty stage uses an original silent Higgsfield
+loop of a Filipino family enjoying videoke at home, darkened behind the join
+card and stopped when the browser requests reduced motion. The room QR and code
+remain available beneath every rail tab. The TV header carries an original
+scrolling join reminder and temporarily replaces it with the title and singer
+when the protected playback snapshot changes to a newly current song; this
+notice is presentational and does not claim which authorized controller caused
+the transition. Long content must wrap within the
+information rail instead of widening or clipping the TV viewport. Searching
+from the paired display never grants it
+queue or host authority; adding a result stays on a joined phone. Arrow keys
+move between the small set of display actions, Enter selects, and Back exits
+fullscreen where the browser reports the key. It shares room state but does not
+use mobile navigation or implicitly receive host authority.
 
 ### Later native app
 

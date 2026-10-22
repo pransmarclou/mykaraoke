@@ -26,7 +26,7 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
   const db = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
   const query = `playback fixture ${randomUUID().slice(0, 8)}`;
   const generation = randomUUID();
-  const titles = ["Playback Fixture Alpha", "Playback Fixture Beta"];
+  const titles = ["Arthur Nery - Binni (Karaoke/Acoustic Instrumental Version)", "Playback Fixture Beta"];
   const guestContext = await browser.newContext();
   const tvContext = await browser.newContext();
   let roomId: string | undefined;
@@ -62,9 +62,21 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     const pairCode = (await page.getByTestId("tv-pair-code").textContent())!;
     await tv.getByRole("textbox", { name: "TV pairing code" }).fill(pairCode);
     await tv.getByRole("button", { name: "Pair this display" }).click();
-    await expect(tv.getByText("Waiting for the next song")).toBeVisible();
+    await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible();
     await expect(tv.getByRole("img", { name: `QR code to join room ${code}` })).toBeVisible();
     await expect(tv.getByRole("button", { name: "Enter fullscreen" })).toBeVisible();
+    await expect(tv.getByRole("tab", { name: "Up next" })).toHaveAttribute("aria-selected", "true");
+    await expect(tv.getByTestId("tv-join-card")).toContainText(code);
+    await expect(tv.getByTestId("tv-stage-banner")).toHaveAccessibleName(`Welcome to MyKaraoke. Scan the QR code or enter room ${code} on your phone to join and add songs.`);
+    await tv.getByRole("tab", { name: "Scores" }).click();
+    await expect(tv.getByText("No scores yet.")).toBeVisible();
+    await tv.getByRole("tab", { name: "Search" }).click();
+    const tvSearchPanel = tv.getByRole("tabpanel");
+    await tvSearchPanel.getByRole("searchbox", { name: "Search songs or artists" }).fill(query);
+    await tvSearchPanel.getByRole("button", { name: "Search", exact: true }).click();
+    await expect(tv.getByTestId("tv-search-results")).toContainText(titles[0]);
+    await expect(tv.getByTestId("tv-search-results").getByRole("button", { name: /Add .* from a joined phone/ }).first()).toBeDisabled();
+    await tv.getByRole("tab", { name: "Up next" }).click();
     await tv.keyboard.press("ArrowRight");
     await expect(tv.getByRole("button", { name: "Enter fullscreen" })).toBeFocused();
     const tvCookie = (await tvContext.cookies()).find((cookie) => cookie.name === "mk_tv_session");
@@ -78,6 +90,12 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(page.getByTestId("queue-item")).toHaveCount(2);
     await page.getByRole("button", { name: "Start next song" }).click();
     await expect(tv.getByRole("heading", { name: titles[0] })).toBeVisible({ timeout: 10_000 });
+    await expect(tv.getByTestId("tv-song-start-notice")).toContainText(`Now starting${titles[0]} · Alex`);
+    await expect(tv.getByRole("img", { name: `Compact QR code to join room ${code}` })).toBeVisible();
+    await expect(tv.getByTestId("tv-queue-item")).toHaveCount(1);
+    await expect(tv.getByTestId("tv-queue")).toContainText(titles[1]);
+    const tvWidths = await tv.evaluate(() => ({ document: document.documentElement.scrollWidth, viewport: window.innerWidth }));
+    expect(tvWidths.document).toBeLessThanOrEqual(tvWidths.viewport + 1);
     await expect(tv.getByTestId("singer-countdown")).toBeVisible();
     await expect(tv.getByRole("button", { name: "Singer getting ready" })).toBeDisabled();
     await expect(tv.getByTestId("tv-player").locator("iframe")).toBeVisible();
@@ -98,6 +116,7 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(tv.getByText("Player state: playing")).toBeVisible({ timeout: 10_000 });
     await tv.evaluate(() => (window as unknown as Window & { __testPlayerEnd: () => void }).__testPlayerEnd());
     await expect(tv.getByRole("heading", { name: titles[1] })).toBeVisible({ timeout: 10_000 });
+    await expect(tv.getByTestId("tv-song-start-notice")).toContainText(`Now starting${titles[1]} · Alex`);
     await expect(page.getByText(titles[1]).first()).toBeVisible({ timeout: 10_000 });
     await tv.reload();
     await expect(tv.getByRole("heading", { name: titles[1] })).toBeVisible();
@@ -106,7 +125,7 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await expect(tv.getByText("Player state: error")).toBeVisible();
     await expect(tv.getByRole("alert").filter({ hasText: "YouTube could not play" })).toContainText("error 150");
     await page.getByRole("button", { name: "Skip current" }).click();
-    await expect(tv.getByText("Waiting for the next song")).toBeVisible({ timeout: 10_000 });
+    await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible({ timeout: 10_000 });
   } finally {
     await guestContext.close();
     await tvContext.close();
@@ -154,7 +173,7 @@ test("two guests and a TV recover from reloads and network loss, then stop when 
     const pairCode = (await page.getByTestId("tv-pair-code").textContent())!;
     await tv.getByRole("textbox", { name: "TV pairing code" }).fill(pairCode);
     await tv.getByRole("button", { name: "Pair this display" }).click();
-    await expect(tv.getByText("Waiting for the next song")).toBeVisible();
+    await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible();
     await guests[0].getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await expect(guests[0].getByText("Lifecycle Fixture Song")).toBeVisible();
     await guests[0].getByRole("button", { name: "Add" }).click();

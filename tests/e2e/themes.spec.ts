@@ -33,7 +33,7 @@ test("host theme changes synchronize to guest and paired TV browsers", async ({
       .getByRole("textbox", { name: "TV pairing code" })
       .fill((await page.getByTestId("tv-pair-code").textContent())!);
     await tv.getByRole("button", { name: "Pair this display" }).click();
-    await expect(tv.getByText("Waiting for the next song")).toBeVisible();
+    await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible();
 
     await page.getByRole("button", { name: "Use Electric Blue party theme" }).click();
     for (const surface of [page, guest, tv]) {

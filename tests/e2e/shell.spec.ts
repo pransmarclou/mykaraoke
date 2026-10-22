@@ -48,6 +48,29 @@ test("unpaired TV actions support directional remote focus", async ({ page }) =>
   await expect(pairButton).toBeFocused();
 });
 
+test("TV setup fits a 720p display and its waiting video supports byte ranges", async ({ page, request }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/tv/ABC234");
+
+  const dimensions = await page.evaluate(() => ({
+    width: document.documentElement.scrollWidth,
+    height: document.documentElement.scrollHeight,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+  }));
+  expect(dimensions.width).toBeLessThanOrEqual(dimensions.viewportWidth + 1);
+  expect(dimensions.height).toBeLessThanOrEqual(dimensions.viewportHeight + 1);
+
+  const response = await request.get("/media/tv-videoke-family-loop.mp4", {
+    headers: { Range: "bytes=0-1023" },
+  });
+  expect(response.status()).toBe(206);
+  expect(response.headers()["content-type"]).toContain("video/mp4");
+  expect(response.headers()["accept-ranges"]).toBe("bytes");
+  expect(response.headers()["content-range"]).toMatch(/^bytes 0-1023\/\d+$/u);
+  expect((await response.body()).byteLength).toBe(1_024);
+});
+
 test("entry surfaces have no horizontal overflow", async ({ page }) => {
   for (const path of ["/", "/host", "/join", "/compatibility", "/tv/ABC234"]) {
     await page.goto(path);

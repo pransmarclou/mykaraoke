@@ -430,14 +430,20 @@ disabling a feature removes both its UI affordance and mutation permission.
 
 ## Phase 10 — Cross-browser web MVP, compatibility, and launch
 
-**Status (2026-10-20): In build by explicit owner direction.** The first slice
+**Status (2026-10-21): In build by explicit owner direction.** The first slice
 adds a public browser capability check and a dated, truthful tested-versus-open
 device evidence ledger. It does not request media permission or treat API
 presence as proof of hardware compatibility. A second slice adds verified
 application-wide security/privacy response headers and records a zero-finding
 runtime dependency audit. A TV usability slice adds branded pairing/waiting
 states, a singer-ready countdown, and directional remote focus; CSP and the
-named device matrix remain open.
+named device matrix remain open. The waiting stage now includes an original,
+silent 16:9 Filipino-family videoke loop with a static gradient fallback and
+reduced-motion shutdown; its real smart-TV decoding/performance check remains
+part of the named device matrix. The paired layout also keeps its compact join
+QR under every utility tab, runs an accessible join reminder in the header,
+and briefly replaces that reminder with a new-song title/singer notice whenever
+the TV observes a current-song transition.
 
 ### User-facing outcome
 
@@ -687,7 +693,7 @@ Update this table only with evidence, never optimism.
 | 7 | IMPLEMENTED, VERIFICATION PENDING | Unit 15/15, integration 18/18, lint/typecheck/DB lint, production build, isolated desktop/mobile four-session journeys, hosted create/persist/authorized-close smoke, and 25 non-mutating production shell checks passed 2026-10-19; Firefox is blocked before navigation by the documented macOS 27 runner issue | Production HTTPS is Ready and real Safari host/reload checks passed; separate hosted test project, Firefox coverage, physical phone, and TV-browser checks remain | Owner review pending |
 | 8 | IMPLEMENTED, VERIFICATION PENDING | Unit 19/19, lint/typecheck/build, and focused desktop/mobile microphone recovery journeys passed | Real Safari verified MacBook Pro and USB EarPods input selection, switching, activity, mute, and an owner-confirmed audible five-second 9% monitor state routed to EarPods; separate latency characterization, disconnect/recovery, Windows, and Bluetooth checks remain | Owner review pending |
 | 9 | IMPLEMENTED, VERIFICATION PENDING | 48 unit checks cover favorites, reactions, rotation, duets, guest permissions, ratings/leaderboard, and theme rules; 12 focused desktop/mobile shell checks cover personal theme persistence, responsive layout, and WCAG A/AA; room-theme integration and host/guest/TV tests are authored but blocked without the allowlisted hosted test project | All three themes visually reviewed; hosted schema columns confirmed read-only; combined browser interaction, migration-history reconciliation, and physical TV verification remain open | Owner directed the next phase while deferring the combined gate, 2026-10-20 |
-| 10 | IN BUILD | TypeScript, lint, 54/54 unit checks, optimized build, and 18/18 focused desktop/mobile Chromium shell checks pass; readiness, TV remote focus, WCAG A/AA, overflow, and response-header checks are covered; runtime dependency audit has zero findings | Narrow-viewport and public TV-pairing visual passes completed; optimized HTTP response verified directly; paired countdown/remote journey is authored but awaits the dedicated test project; physical matrix, CSP, hosted smoke, and dev-only dependency advisory remain open | Owner directed next phase, 2026-10-20 |
+| 10 | IN BUILD | TypeScript, lint, 56/56 unit checks, optimized build, and 20/20 focused desktop/mobile Chromium shell checks pass; Chromium and WebKit manual passes confirm 720p TV setup containment, remote focus, MP4 metadata decoding, and clean console/network state; byte-range delivery is covered | Tabbed TV Up Next/Scores/read-only Search, persistent join QR, scrolling join reminder, current-song notice, long-title containment, and an original silent waiting-stage loop are implemented; the paired database journey awaits the dedicated test project, and the physical matrix, CSP, hosted smoke, and dev-only dependency advisory remain open | Owner requested TV finalization, 2026-10-21 |
 | N1 | NOT STARTED | — | — | — |
 | N2 | NOT STARTED | — | — | — |
 | N3 | NOT STARTED | — | — | — |

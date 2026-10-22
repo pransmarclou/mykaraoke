@@ -44,7 +44,7 @@ test("host and guest rate a performance and the TV shows the leaderboard", async
     await page.getByRole("button", { name: "Generate TV pairing code" }).click();
     await tv.getByRole("textbox", { name: "TV pairing code" }).fill((await page.getByTestId("tv-pair-code").textContent())!);
     await tv.getByRole("button", { name: "Pair this display" }).click();
-    await expect(tv.getByText("Waiting for the next song")).toBeVisible();
+    await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible();
 
     const guest = await guestContext.newPage();
     await guest.goto(`/join?code=${code}`);
@@ -66,6 +66,7 @@ test("host and guest rate a performance and the TV shows the leaderboard", async
     await expect(guest.getByRole("button", { name: "Rate 4 stars" })).toHaveAttribute("aria-pressed", "true");
     await page.getByRole("button", { name: "Rate 5 stars" }).click();
     await expect(page.getByTestId("rating-target")).toContainText("4.5 ★ from 2 ratings");
+    await tv.getByRole("tab", { name: "Scores" }).click();
     await expect(tv.getByTestId("leaderboard")).toContainText("Alex", { timeout: 10_000 });
     await expect(tv.getByTestId("leaderboard")).toContainText("4.5 ★");
     await expect(tv.getByRole("button", { name: /Rate \d stars?/ })).toHaveCount(0);

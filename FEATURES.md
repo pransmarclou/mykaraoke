@@ -11,7 +11,11 @@ search cache/quota controls; singer assignment; shared transactional queue;
 host-only reorder/skip/remove; private Realtime queue invalidations and
 reconnect snapshots; designated TV pairing, official YouTube playback,
 host play/pause/resume/skip, player-error recovery, current/up-next status,
-five-second singer-ready transitions, and arrow/Enter TV remote focus;
+five-second singer-ready transitions, a bounded ordered TV queue rail with
+tabbed Up Next, Scores, and read-only Search panels, a persistent TV join QR,
+top scores, an accessible scrolling join banner that becomes a brief new-song
+notice, arrow/Enter TV remote focus, and an original silent Filipino-family
+videoke waiting loop with reduced-motion and playback fallbacks;
 expiry warning, terminal display on room closure, replay-safe UI retries,
 Realtime reconnection, queue-write limits, and a server-side cleanup command;
 local Microphone Studio with permission onboarding, browser-visible input

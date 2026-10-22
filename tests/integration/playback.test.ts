@@ -48,6 +48,8 @@ test("host commands, TV events, and queue advancement are atomic and idempotent"
   assert.equal(started.current?.youtubeId, "fBcDeFgHi01");
   assert.equal(started.observed, "cued");
   assert.equal(started.next?.youtubeId, "fBcDeFgHi02");
+  assert.deepEqual(started.upNext.map((item) => item.youtubeId), ["fBcDeFgHi02"]);
+  assert.equal(started.queuedCount, 1);
   assert.equal((await queueSnapshot(host.room.id)).items.length, 1);
   assert.equal((await hostPlaybackCommand(host.room.id, "start", key)).version, started.version);
   await assert.rejects(hostPlaybackCommand(host.room.id, "skip", key), (error: unknown) => error instanceof PlaybackError && error.reason === "invalid");
@@ -67,6 +69,7 @@ test("host commands, TV events, and queue advancement are atomic and idempotent"
   assert.equal(ended.current, null);
   assert.equal(ended.observed, "idle");
   assert.equal((await playbackSnapshot(host.room.id)).next, null);
+  assert.equal((await playbackSnapshot(host.room.id)).queuedCount, 0);
 });
 
 test("public database roles cannot access playback state or pairing data", async () => {

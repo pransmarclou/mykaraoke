@@ -1262,6 +1262,156 @@ test-project, browser/device, and audio-hardware matrices are completed.
   Back behavior, and autoplay recovery on the named physical smart-TV/browser
   matrix; do not claim physical compatibility from Chromium emulation.
 
+## Phase 10 TV overflow and queue-rail correction — 2026-10-20
+
+- Owner report: A long active-song title escaped the right edge of the TV
+  information card. The owner also clarified that the reference-inspired TV
+  hierarchy must expose the ordered queue and supporting room information.
+- Evidence boundary: The supplied screenshot proves the MyKaraoke overflow.
+  Retained REA evidence establishes the reference's stage-first hierarchy and
+  an Up Next area. A fresh passive REA listing was attempted, but the selected
+  loopback CDP endpoint was not running, so no new authenticated reference
+  observation or exact-layout claim is made.
+- Completed: Current-song and singer text now have smaller fluid type,
+  `min-width: 0`, and anywhere wrapping so long slash-delimited titles stay
+  within the viewport. The existing protected playback snapshot now returns a
+  bounded ordered queue preview plus total count. The TV rail shows up to five
+  numbered songs with singers, reports additional queued songs, and keeps the
+  top three score entries below it.
+- Authority and performance: This is read-only display data obtained through
+  the existing host/guest/paired-TV playback authorization. It adds no public
+  queue endpoint, host controls, or extra client poller; the two-second
+  playback snapshot remains the single queue source for the TV.
+- Verification: TypeScript, lint, 55/55 unit checks, optimized production
+  build, 18/18 focused desktop/mobile Chromium shell checks, public WCAG A/AA
+  and overflow checks, and `git diff --check` pass. The long-title paired
+  journey now checks viewport overflow and the upcoming list; playback
+  integration assertions cover queue order/count.
+- Remaining boundary: The database-mutating integration and paired-browser
+  journeys remain authored but unrun until a separately allowlisted hosted
+  test project exists. Verify the active rail on a real paired TV once that
+  project or another safe fixture is available.
+
+## Phase 10 TV reference-layout refinement — 2026-10-21
+
+- Owner correction: The TV should follow the current Okevideoke screen's
+  information architecture instead of presenting the queue and scores as one
+  long metadata card.
+- Reference boundary: REA was invoked first, but its selected loopback CDP
+  endpoint was unavailable. A passive authenticated browser inspection then
+  confirmed the empty-room desktop composition without entering credentials or
+  mutating the reference room: large stage at left, fixed right rail with Up
+  Next/Scores/Search tabs, persistent join QR/card below the tabs, and compact
+  mic/fullscreen actions above. This is supplemental visual evidence, not a new
+  REA Evidence ID, and does not authorize copying reference assets or trade
+  dress.
+- Implemented: The paired MyKaraoke display now keeps its stage and utility
+  rail visible together in wide layouts. Up Next shows up to five ordered songs,
+  Scores owns the leaderboard and empty state, Search performs authorized
+  read-only YouTube discovery with thumbnails, and the MyKaraoke join QR/code
+  stays pinned below every tab. Waiting state moved into a centered stage card;
+  active title/singer/player status moved under the official YouTube player and
+  wraps at narrow widths.
+- Security decision: TV search uses the existing paired-device credential and a
+  dedicated rate-limit actor. Search results cannot be queued from the TV; the
+  rail explicitly directs the user to scan the QR and add from a joined phone.
+  This preserves the rule that pairing a display does not grant host or guest
+  queue authority.
+- Verification at implementation time: TypeScript, lint, 55/55 unit checks,
+  optimized production build, 18/18 focused desktop/mobile Chromium shell
+  checks, and `git diff --check` pass. The paired journey now covers all three
+  tabs, the persistent join card, TV search results, queue contents, long-title
+  overflow, and the score-tab leaderboard. The database-mutating paired journey
+  remains unrun until the separately allowlisted hosted test project is
+  available.
+
+## Phase 10 original TV waiting-loop slice — 2026-10-21
+
+- Owner direction: Add a looping Filipino-family videoke scene to the paired
+  TV waiting stage using Higgsfield.
+- Asset provenance: A single original 6-second, 16:9, 1280x720 H.264 MP4 was
+  generated with Higgsfield Kling v3.0, standard mode, sound off. Generation
+  job `47e92354-00fc-4635-804f-5f7e9173bbc0` cost 9 credits. The first
+  Seedance attempt was rejected for plan access and did not spend its quoted
+  42 credits.
+- Completed: The exact generated file is stored at
+  `public/media/tv-videoke-family-loop.mp4` and appears only on the empty paired
+  TV stage. It is muted, loops inline without controls, sits under a contrast
+  overlay, and leaves the existing gradient as the autoplay/load fallback.
+  Reduced-motion preference pauses, rewinds, and hides the video.
+- Verification: Quick Look visual inspection confirmed a natural wide home
+  videoke scene with no reference branding. macOS metadata reports 6.042
+  seconds, 1280x720, H.264, 4,702,944 bytes, and no audio bitrate. TypeScript,
+  lint, 55/55 unit checks, the optimized production build, and 18/18 focused
+  desktop/mobile Chromium shell checks pass. The paired journey now asserts
+  the exact local source and silent looping properties but remains unrun until
+  a separately allowlisted hosted test project exists.
+- Remaining boundary: Verify autoplay fallback, decoding performance, contrast,
+  and reduced-motion behavior on the named physical TV browsers. This original
+  asset follows the owner's theme request but does not claim or copy the
+  reference application's background media.
+
+## Phase 10 TV finalization audit — 2026-10-21
+
+- Owner direction: Finalize the TV work and check for missed TV-specific gaps.
+- Story audited: Host-generated pairing code → HttpOnly display session →
+  waiting/join state → protected playback snapshot → queue, score, search,
+  theme, countdown, reaction, official YouTube player, remote-focus, recovery,
+  and terminal-room states.
+- Gap found and fixed: The unpaired setup page was 970px tall at 1280x720 and
+  required vertical scrolling. A short-viewport layout now reduces only the
+  setup screen's spacing and scale. It fits 1024x768, 1280x720, 1366x768, and
+  1920x1080 without horizontal or vertical overflow while retaining the same
+  controls, copy, and focus order.
+- Media delivery: The local waiting-loop endpoint returns `video/mp4`,
+  `Accept-Ranges: bytes`, a 4,702,944-byte length, and a 206 response for a
+  0–1023 byte request. Chromium and WebKit both decoded 6.04-second,
+  1280x720 metadata with no console errors or failed requests.
+- Verification: TypeScript, lint, 55/55 unit checks, optimized production
+  build, 20/20 focused desktop/mobile Chromium shell checks, `git diff
+  --check`, and manual Chromium/WebKit 720p passes succeed. Remote ArrowDown
+  focus lands on the pairing field. Local TV-required environment names are
+  present without exposing values; `.env.local` is ignored and no secret-like
+  file beyond `.env.example` is tracked.
+- Review result: No additional missing web-MVP TV control was found. Pairing,
+  fullscreen, waiting media, join QR/code, queue, scores, read-only search,
+  countdown, playback activation, pause/resume/skip authority, reactions,
+  theme sync, reload/reconnect, errors, room termination, and reduced motion
+  are implemented or have authored coverage.
+- Remaining acceptance evidence: Do not call Phase 10 or universal TV support
+  accepted until the separately allowlisted hosted test project can run the
+  paired database journey and named physical smart-TV browsers verify real
+  remote key names, YouTube autoplay/ads/errors, fullscreen exit, MP4 decode
+  performance, QR distance, contrast, and network interruption.
+
+## Phase 10 TV join ticker and current-song notice — 2026-10-21
+
+- Owner direction and evidence: Keep the TV QR visible, add running join text
+  like the supplied active-song screenshot, and notify the room when a song is
+  started. The screenshot is static evidence for the stage-top instruction and
+  persistent rail QR only; it does not establish animation or notification
+  behavior.
+- Completed: The existing compact join QR/code remains pinned below Up Next,
+  Scores, and Search during waiting and active playback. The paired TV header
+  now runs original MyKaraoke join copy without reducing or covering the
+  official YouTube player. When the protected playback snapshot changes from
+  waiting or one current item to another newly current song, the header briefly
+  announces the title and singer, then restores the join reminder.
+- Honesty and accessibility: The snapshot does not expose the actor who caused
+  a transition, and authorized guest remotes or automatic queue advancement can
+  also cue a song, so the notice says `Now starting` rather than falsely naming
+  the host. Its live region is announced once. Reduced-motion browsers receive
+  a static clipped reminder and no marquee or entrance animation.
+- Verification: TypeScript, lint, 56/56 unit checks, the optimized production
+  build, 20/20 focused desktop/mobile Chromium shell checks, and `git diff
+  --check` pass. The protected
+  multi-context playback journey now asserts the waiting ticker, persistent QR
+  during active playback, and notices for both host-start and automatic next
+  song, but remains unrun without a separately allowlisted hosted test project.
+- Remaining boundary: Real QR distance/scan, ticker legibility, notice timing,
+  reduced-motion presentation, and long-title behavior still require the named
+  physical smart-TV/browser matrix before Phase 10 acceptance.
+
 ## Session handoff template
 
 Append a short entry after future work sessions:

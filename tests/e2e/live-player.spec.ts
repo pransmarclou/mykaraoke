@@ -24,7 +24,7 @@ test("official YouTube sample plays on a paired display and the host skips it", 
     await page.getByRole("button", { name: "Generate TV pairing code" }).click();
     await tv.getByRole("textbox", { name: "TV pairing code" }).fill((await page.getByTestId("tv-pair-code").textContent())!);
     await tv.getByRole("button", { name: "Pair this display" }).click();
-    await expect(tv.getByText("Waiting for the next song")).toBeVisible();
+    await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible();
     await page.getByRole("searchbox", { name: "Search YouTube karaoke" }).fill(query);
     await expect(page.getByTestId("search-results").getByRole("button", { name: "Add" }).first()).toBeVisible();
     await page.getByTestId("search-results").getByRole("button", { name: "Add" }).first().click();
@@ -35,7 +35,7 @@ test("official YouTube sample plays on a paired display and the host skips it", 
     await expect(tv.getByText("Player state: playing")).toBeVisible({ timeout: 30_000 });
     await tv.screenshot({ path: "test-results/phase6-live-tv.png" });
     await page.getByRole("button", { name: "Skip current" }).click();
-    await expect(tv.getByText("Waiting for the next song")).toBeVisible({ timeout: 10_000 });
+    await expect(tv.getByRole("heading", { name: "Waiting for songs…" })).toBeVisible({ timeout: 10_000 });
   } finally {
     await tvContext.close();
     if (roomId) await db.query("delete from public.rooms where id = $1", [roomId]);

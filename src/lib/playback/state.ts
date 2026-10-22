@@ -21,6 +21,8 @@ export type PlaybackSnapshot = {
   errorCode: number | null;
   current: PlaybackSong | null;
   next: PlaybackSong | null;
+  upNext: PlaybackSong[];
+  queuedCount: number;
   devicePaired: boolean;
   tvConnected: boolean;
   guestPermissions: GuestPermissions;
@@ -58,12 +60,33 @@ async function nextSong(client: PoolClient, roomId: string): Promise<PlaybackSon
   const result = await client.query<SongRow>("select id, youtube_id, title, channel_title, singer_name, duet_singer_name, duration_seconds from public.queue_items where room_id = $1 and status = 'queued' order by position limit 1", [roomId]);
   return song(result.rows[0]);
 }
+async function upcomingSongs(client: PoolClient, roomId: string): Promise<{ items: PlaybackSong[]; total: number }> {
+  const result = await client.query<SongRow & { queued_count: string }>(
+    `select id, youtube_id, title, channel_title, singer_name, duet_singer_name, duration_seconds,
+            count(*) over()::text as queued_count
+       from public.queue_items
+      where room_id = $1 and status = 'queued'
+      order by position
+      limit 8`,
+    [roomId],
+  );
+  return {
+    items: result.rows.flatMap((row) => {
+      const item = song(row);
+      return item ? [item] : [];
+    }),
+    total: Number(result.rows[0]?.queued_count ?? 0),
+  };
+}
 async function snapshot(client: PoolClient, roomId: string): Promise<PlaybackSnapshot> {
   const state = await stateForRoom(client, roomId);
+  const current = await currentSong(client, state?.current_item_id ?? null);
+  const upcoming = await upcomingSongs(client, roomId);
   return {
     version: Number(state?.version ?? 0), desired: state?.desired ?? "pause", observed: state?.observed ?? "idle",
-    errorCode: state?.error_code ?? null, current: await currentSong(client, state?.current_item_id ?? null),
-    next: await nextSong(client, roomId), devicePaired: Boolean(state?.device_hash),
+    errorCode: state?.error_code ?? null, current,
+    next: upcoming.items[0] ?? null, upNext: upcoming.items, queuedCount: upcoming.total,
+    devicePaired: Boolean(state?.device_hash),
     tvConnected: Boolean(state?.device_seen_at && Date.now() - state.device_seen_at.getTime() < 20_000),
     guestPermissions: await readGuestPermissions(client, roomId),
     partyTheme: await readRoomPartyTheme(client, roomId),
