@@ -36,7 +36,7 @@ vertical slices rather than a screen-first build.
 | 7 | MVP reconnection, lifecycle, and multi-device gate | MVP | VERIFICATION PENDING |
 | 8 | Local Microphone Studio | Microphone Studio | VERIFICATION PENDING |
 | 9 | Singer and party experience | Party Experience | IN BUILD |
-| 10 | Cross-browser web MVP, compatibility, and launch | Web release | NOT STARTED |
+| 10 | Cross-browser web MVP, compatibility, and launch | Web release | IN BUILD |
 | N1 | Native app foundation and core party actions | iOS/Android | NOT STARTED |
 | N2 | App-scanned QR pairing to the web big screen | iOS/Android + web display | NOT STARTED |
 | N3 | Native microphone and approved feature parity | iOS/Android | NOT STARTED |
@@ -378,7 +378,7 @@ UI labels all unverified or unsupported combinations accurately.
 
 ## Phase 9 — Singer and party experience
 
-**Status (2026-10-20): Implemented, verification pending.** The owner chose
+**Status (2026-10-22): Implemented, verification pending.** The owner chose
 to defer, not accept, the remaining Phase 7–8 verification. The first Phase 9
 slices implement browser-local song favorites, scoped rate-limited TV reactions,
 optional fair singer rotation with manual host override, and two-singer duet
@@ -393,7 +393,11 @@ paired TV. The hosted MVP now exposes the expected rating and party-theme
 schema, but migration history still needs reconciliation. The Phase 9
 integration and multi-context browser journeys still need the dedicated hosted
 test project, and the combined acceptance gate remains open. The owner directed
-Phase 10 to begin while this evidence remains explicitly deferred.
+Phase 10 to begin while this evidence remains explicitly deferred. An additive
+optional-account slice now supplies hosted email/password access, password
+recovery, and Google OAuth wiring. It does not migrate browser-local favorites,
+room queues, or history into an account. Google is not live until the hosted
+Supabase project has a reviewed OAuth client and provider enabled.
 
 ### User-facing outcome
 
@@ -407,7 +411,11 @@ MVP lifecycle.
 - Assign two singers to duet queue items.
 - Add scoped, throttled emoji reactions with brief TV animation.
 - Add standard party themes based on design tokens.
-- Add local favorites first, then optional account sync behind a clear boundary.
+- Add local favorites first, then optional account identity behind a clear
+  boundary. Sync favorites or saved queues only in a separately designed and
+  migrated slice.
+- Keep email and Google accounts additive: registration, sign-in, recovery,
+  session refresh, and sign-out must never gate anonymous room use.
 - Add configurable guest permissions enforced on the server.
 - Add audience performance ratings and a live room leaderboard (owner request,
   2026-10-20): each host or guest rates the current or just-finished song once
@@ -419,12 +427,15 @@ MVP lifecycle.
 ### Tests and verification
 
 - Unit: rotation fairness, duet assignment, reaction throttle, permissions,
-  rating validation, and leaderboard ordering.
+  rating validation, leaderboard ordering, account validation, and safe auth
+  redirect handling.
 - Integration: concurrent singer changes, favorites ownership, reaction abuse
   limits, room-scoped ratings, and server-enforced guest restrictions.
 - Playwright multi-context party scenario including duet, reactions, ratings,
   phone remote, and the TV leaderboard.
 - Accessibility checks for all themes, reduced motion, and TV contrast.
+- Non-mutating desktop/mobile browser checks for every public account state;
+  verify email delivery and Google callback only with dedicated test accounts.
 - Verify a host theme change reaches a guest and paired TV, survives their
   reloads, and cannot be changed by a guest.
 
@@ -467,9 +478,10 @@ already present in that room, pairing atomically cues the first item. When the
 TV is already designated and idle, the first song added from a phone or host
 surface is atomically promoted to the stage; subsequent requests remain up
 next. The display attempts playback after the singer countdown, preserving a
-visible manual action when browser autoplay policy blocks it. This does not yet restore
-a queue from a cross-device account: optional account identity and queue sync
-remain an explicit Phase 9 follow-up rather than a completed claim.
+visible manual action when browser autoplay policy blocks it. Optional account
+identity is now implemented with hosted Supabase Auth, but it does not restore
+a queue from an account: favorites, saved queues, and room history sync remain
+an explicit follow-up rather than a completed claim.
 
 ### User-facing outcome
 

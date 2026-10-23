@@ -6,19 +6,17 @@ to evidence or code rather than restating large documents.
 
 ## Snapshot
 
-- Last updated: 2026-10-20
+- Last updated: 2026-10-22
 - Current stage: Phase 10 — Cross-browser web MVP, compatibility, and launch
 - Current status: In build; Phase 9 browser-local favorites, ephemeral TV reactions,
   fair singer rotation, duet assignment, guest permissions/phone remote, and
-  audience ratings/live leaderboard, and host-synchronized accessible party
-  themes are implemented slices. Phases 7–8 remain implemented with
-  verification pending. Phase 10 now has a public, non-invasive browser
-  capability and real-device evidence surface
-- Repository state: `main` is one local commit ahead of `origin/main` with the
-  guest-permission slice; the ratings/leaderboard slice, additive migration,
-  room-theme synchronization slice and additive migration, Phase 10 readiness
-  slice, tests, and documentation remain uncommitted. The prior cleanup
-  deployment remains live
+  audience ratings/live leaderboard, host-synchronized accessible party
+  themes, and optional hosted account identity are implemented slices. Phases
+  7–8 remain implemented with verification pending. Phase 10 continues with a
+  public capability surface, direct TV launch, phone-host controls, party
+  notifications, and the account access slice
+- Repository state: `main` matches `origin/main`; the optional account slice,
+  tests, dependency update, and documentation are uncommitted
 - Current phase gate: Complete Phase 10 hardening and the named real-device
   matrix. The deferred Phase 7 multi-device, Phase 8 hardware/audio, and
   combined Phase 9 hosted-test checks remain open and are not acceptance
@@ -50,6 +48,10 @@ to evidence or code rather than restating large documents.
 - Delivery: complete cross-browser web MVP first; later app-first iOS/Android
   with a QR-paired web display. PWA installability is optional, not a web gate
 - Basic use: No account required to host or join
+- Optional accounts: Hosted Supabase Auth supports email/password registration,
+  confirmation, recovery, persistent cookie sessions, and Google OAuth wiring.
+  Google remains disabled in the hosted provider settings until an OAuth client
+  is configured. Account data sync is not implied.
 - Primary roles: Host, guest/singer, and TV/playback device
 - Core backend: Supabase PostgreSQL, Realtime, optional Auth, and RLS
 - Song source/playback: Official YouTube Data API v3 and IFrame Player API
@@ -1720,6 +1722,45 @@ test-project, browser/device, and audio-hardware matrices are completed.
   production build pass. The protected multi-browser room journey now asserts
   phone-host settings and guest exclusion, but was not run because it mutates
   hosted room data and requires the separately allowlisted test project.
+
+## Phase 9/10 optional account access — 2026-10-22
+
+- Owner direction: Add registration and login behavior informed by the retained
+  reference evidence, including Google account access, without removing the
+  anonymous web MVP.
+- Reference boundary: Reused REF-AUTH-01 evidence `ev_1292c50...` and
+  `ev_7f78df...`, which establish only visible email/password, Google,
+  registration, recovery, account-label, and sign-out states. No reference
+  account data model, recovery delivery, Google callback, or sync behavior was
+  inferred or copied.
+- Implemented: Added optional hosted Supabase Auth with email registration and
+  confirmation, email/password login, generic password-recovery messaging,
+  reset-password handling, Google OAuth PKCE callback wiring, persistent
+  server-cookie sessions, account status, and sign-out. The shared header shows
+  the signed-in account label. Anonymous host and join routes remain available.
+- Security/resilience: Redirect destinations are restricted to same-origin
+  paths; session refresh composes with the nonce CSP proxy; an Auth outage does
+  not block anonymous room use; recovery does not reveal whether an email is
+  registered; provider capability is read from the hosted Auth settings so a
+  disabled Google integration is not presented as usable.
+- Hosted provider state: A read-only settings request confirmed hosted Auth and
+  email registration are enabled, while Google is disabled. The code and UI are
+  ready, but activation still requires a reviewed Google OAuth client ID/secret,
+  the Supabase callback URL in Google, the application callback URL in Supabase,
+  and enabling the Google provider. Secrets must stay in the provider/dashboard,
+  never in tracked files.
+- Sync boundary: Signed-in identity follows the Supabase account across
+  browsers. Favorites, saved queues, room history, anonymous room credentials,
+  and entitlements are not linked or migrated by this slice.
+- Verification: TypeScript, ESLint, 71/71 unit checks, the optimized build, and
+  2/2 focused non-mutating desktop/mobile Chromium account-shell checks pass,
+  including WCAG A/AA and horizontal-overflow analysis. Desktop browser
+  inspection covered sign-in, registration, provider status, recovery, header
+  navigation, and layout. No real account was created and no recovery email or
+  live Google callback was exercised against the hosted MVP.
+- Next exact action: Configure Google OAuth in the hosted Supabase project,
+  verify production callback URLs with a dedicated test account, then decide
+  whether the next independent slice should sync favorites or saved queues.
 
 ## Session handoff template
 

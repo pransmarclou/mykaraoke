@@ -46,9 +46,16 @@ do not affect scores. Hosts and guests can independently give the live or
 just-finished performance 1–5 stars; a room-only leaderboard groups ratings by
 performer and is visible on the paired TV. The host can separately control
 guest song additions, queue actions, reactions, ratings, and phone remote
-commands. Favorites do not sync to an account. Accounts and
-payments are not implemented. See `memory.md` for verification and
-`build-phases.md` for the next gate.
+commands. Favorites do not sync to an account. Optional hosted Supabase Auth
+now provides email registration, email/password sign-in, confirmation,
+password recovery, sign-out, persistent cookie sessions, and a Google OAuth
+entry point without gating anonymous hosting or joining. The hosted project
+currently has Google disabled, so the UI truthfully disables that button until
+its OAuth client and provider settings are configured. Account identity can
+follow a user across browsers; favorites, saved queues, and room history remain
+device/room-local and are not yet account-synchronized. Payments are not
+implemented. See `memory.md` for verification and `build-phases.md` for the
+next gate.
 
 Connected host, phone, and TV surfaces receive short, private room
 notifications when another member joins or adds a song. Join notices show the

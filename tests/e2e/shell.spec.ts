@@ -37,6 +37,35 @@ test("main navigation and recovery pages stay usable", async ({ page }) => {
   await expect(page).toHaveURL("/");
 });
 
+test("optional account access exposes sign in, registration, and recovery without gating rooms", async ({ page }) => {
+  await page.goto("/account");
+  await expect(page.getByRole("heading", { name: "Keep your party identity with you." })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+  await expect(page.getByLabel("Password")).toHaveAttribute("autocomplete", "current-password");
+  await expect(page.getByRole("link", { name: "Host" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Join a party" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Create account" }).click();
+  await expect(page.getByRole("textbox", { name: "Display name" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Password", exact: true })).toHaveAttribute("autocomplete", "new-password");
+  await expect(page.getByLabel("Confirm password")).toBeVisible();
+
+  await page.getByRole("link", { name: "Sign in", exact: true }).click();
+  await page.getByRole("link", { name: "Forgot password?" }).click();
+  await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send reset link" })).toBeVisible();
+
+  const widths = await page.evaluate(() => ({
+    document: document.documentElement.scrollWidth,
+    viewport: window.innerWidth,
+  }));
+  expect(widths.document).toBeLessThanOrEqual(widths.viewport + 1);
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
 test("unpaired TV actions support directional remote focus", async ({ page }) => {
   await page.goto("/tv/ABC234");
   const pairCode = page.getByRole("textbox", { name: "TV pairing code" });

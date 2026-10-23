@@ -1,10 +1,11 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
+import { refreshAuthSession } from "@/lib/auth/proxy";
 import { buildContentSecurityPolicy, createNonce } from "@/lib/security/csp";
 
 // Issues a fresh nonce per page request. Next.js reads it from the request's
 // Content-Security-Policy header and applies it to its own scripts; the root
 // layout passes it to the inline theme bootstrap.
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const nonce = createNonce();
   const policy = buildContentSecurityPolicy({
     nonce,
@@ -15,7 +16,7 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", policy);
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  const response = await refreshAuthSession(request, requestHeaders);
   response.headers.set("Content-Security-Policy", policy);
   return response;
 }
