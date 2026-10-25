@@ -6,25 +6,28 @@ to evidence or code rather than restating large documents.
 
 ## Snapshot
 
-- Last updated: 2026-10-22
-- Current stage: Phase 10 — Cross-browser web MVP, compatibility, and launch
+- Last updated: 2026-10-24
+- Current stage: Phase 10 web verification plus owner-directed Native N1 foundation
 - Current status: In build; Phase 9 browser-local favorites, ephemeral TV reactions,
   fair singer rotation, duet assignment, guest permissions/phone remote, and
   audience ratings/live leaderboard, host-synchronized accessible party
   themes, and optional hosted account identity are implemented slices. Phases
   7–8 remain implemented with verification pending. Phase 10 continues with a
   public capability surface, direct TV launch, phone-host controls, party
-  notifications, and the account access slice
-- Repository state: `main` matches `origin/main`; the optional account slice,
-  tests, dependency update, and documentation are uncommitted
+  notifications, the account access slice, and a landscape-aware TV player
+  layout that keeps the queue rail visible on TV browsers reporting compact
+  logical viewports. Native N1 now has a separate
+  Expo/React Native project with a tested branded account foundation
+- Repository state: `main` matches `origin/main`; Google OAuth activation notes
+  and the Native N1 foundation are uncommitted
 - Current phase gate: Complete Phase 10 hardening and the named real-device
   matrix. The deferred Phase 7 multi-device, Phase 8 hardware/audio, and
   combined Phase 9 hosted-test checks remain open and are not acceptance
   evidence
-- Delivery direction: Finish the phone/laptop/TV-browser web MVP through Phase
-  10; only then begin the installed iOS/Android N1–N5 track and native
-  subscriptions. The owner explicitly advanced work into Phase 8 on 2026-10-19
-  and Phases 9–10 on 2026-10-20 while deferring the remaining Phase 7–9 checks.
+- Delivery direction: The planned order remains web MVP, native core/TV pairing,
+  then subscriptions. On 2026-10-24 the owner explicitly began Native N1 while
+  the Phase 7–10 verification gaps stay deferred. This does not authorize a web
+  paywall or advancing native billing ahead of N1–N3.
 - Primary reference target: `https://okevideoke.online/`
 - Dedicated host reference: `https://okevideoke.online/host`
 - Paywall reference: Visible `/premium` route and root-page entry observed;
@@ -50,8 +53,8 @@ to evidence or code rather than restating large documents.
 - Basic use: No account required to host or join
 - Optional accounts: Hosted Supabase Auth supports email/password registration,
   confirmation, recovery, persistent cookie sessions, and Google OAuth wiring.
-  Google remains disabled in the hosted provider settings until an OAuth client
-  is configured. Account data sync is not implied.
+  Google is enabled in the hosted provider settings and reaches Google's
+  production consent screen. Account data sync is not implied.
 - Primary roles: Host, guest/singer, and TV/playback device
 - Core backend: Supabase PostgreSQL, Realtime, optional Auth, and RLS
 - Song source/playback: Official YouTube Data API v3 and IFrame Player API
@@ -1743,11 +1746,8 @@ test-project, browser/device, and audio-hardware matrices are completed.
   not block anonymous room use; recovery does not reveal whether an email is
   registered; provider capability is read from the hosted Auth settings so a
   disabled Google integration is not presented as usable.
-- Hosted provider state: A read-only settings request confirmed hosted Auth and
-  email registration are enabled, while Google is disabled. The code and UI are
-  ready, but activation still requires a reviewed Google OAuth client ID/secret,
-  the Supabase callback URL in Google, the application callback URL in Supabase,
-  and enabling the Google provider. Secrets must stay in the provider/dashboard,
+- Hosted provider state: Hosted Auth, email registration, and Google are
+  enabled. The OAuth client secret remains only in the provider/dashboard,
   never in tracked files.
 - Sync boundary: Signed-in identity follows the Supabase account across
   browsers. Favorites, saved queues, room history, anonymous room credentials,
@@ -1758,9 +1758,78 @@ test-project, browser/device, and audio-hardware matrices are completed.
   inspection covered sign-in, registration, provider status, recovery, header
   navigation, and layout. No real account was created and no recovery email or
   live Google callback was exercised against the hosted MVP.
-- Next exact action: Configure Google OAuth in the hosted Supabase project,
-  verify production callback URLs with a dedicated test account, then decide
-  whether the next independent slice should sync favorites or saved queues.
+- Next exact action: Complete one human Google consent/session round trip with a
+  dedicated test account, then decide whether the next independent slice should
+  sync favorites or saved queues.
+
+## Production Google OAuth activation verification — 2026-10-24
+
+- Production origin: `https://mykaraoke-virid.vercel.app`; Vercel
+  `APP_ORIGIN` was corrected to this canonical alias and the production artifact
+  was redeployed successfully.
+- Browser handoff: The enabled `Continue with Google` action reached Google's
+  account chooser without a redirect mismatch. The request used the configured
+  Google web client, `email profile` scopes, the hosted Supabase
+  `/auth/v1/callback`, and carried the MyKaraoke return path
+  `https://mykaraoke-virid.vercel.app/auth/callback?next=%2Faccount`.
+- Callback boundary: A request without an authorization code safely returned
+  to `/account?error=callback`; the real code exchange was intentionally not
+  exercised because selecting and consenting to a private Google account must
+  be completed by the owner.
+- Production evidence: `/account` returned HTTP 200, the Google action was
+  enabled, the callback route returned the expected guarded redirect, and the
+  recent Vercel production error-log query was clean.
+- Remaining check: The owner signs in, approves the consent screen, confirms
+  the account page/header show the Google identity, then signs out and repeats
+  once after a fresh browser session. Favorites, queues, and room history remain
+  unsynchronized by design.
+
+## Native N1 foundation and Google account slice — 2026-10-24
+
+- Framework decision: Expo SDK 58, React Native 0.88, React 19.3, and Expo
+  Router. This keeps one native iOS/Android codebase while retaining native
+  camera, microphone, deep-link, and store SDK paths; it is not a WebView
+  wrapper. SDK 58 requires Node.js 22.13 or newer.
+- Implemented: `apps/mobile` branded shell, MyKaraoke icon/splash assets,
+  explicit working/pending feature states, account route, Supabase auth-state
+  provider, chunked Expo SecureStore session persistence, Google OAuth browser
+  handoff, `mykaraoke://auth/callback` parsing, sign-out, configuration help,
+  and mobile-local setup documentation.
+- Identity boundary: Mobile sessions come only from hosted Supabase Auth.
+  Anonymous browser room cookies never become app identity. Only the hosted
+  project URL and publishable/anon key enter the client; service-role, database,
+  and Google client secrets stay out of the app.
+- Verification: Mobile TypeScript, Expo lint, Jest 3/3, Expo Doctor 20/20, and
+  `expo export --platform all` passed, producing iOS, Android, and web bundles.
+  A browser preview confirmed the branded home and honest unconfigured account
+  state. The existing web lint, typecheck, and production build also passed.
+- Dependency note: `npm audit --omit=dev` reports five high advisories inherited
+  through the current Expo CLI (`node-forge` and `zod`). Its suggested forced
+  fix downgrades Expo to 44 and is not safe. Expo Doctor reports the SDK 58
+  dependency set compatible; recheck upstream releases before distribution.
+- Not verified: No iOS Simulator, Android emulator, physical phone, signed
+  development build, or live native Google consent occurred. Add
+  `mykaraoke://**` to the hosted Supabase redirect allowlist, configure the
+  browser-safe mobile environment values locally, and complete sign-in/sign-out
+  on both platforms before accepting this slice.
+- Next exact slice: Define a versioned bearer-token API that maps a validated
+  Supabase user to a native room actor, then implement native create/join without
+  weakening the anonymous browser flows. Premium/store billing remains N4.
+
+## TV logical-viewport responsiveness — 2026-10-24
+
+- The active TV stage now uses a landscape-aware two-column layout from a
+  960x540-class logical viewport upward, so the queue/search/scores rail and
+  compact join QR remain beside the video instead of dropping below it.
+- The YouTube frame and singer countdown share a viewport-height-aware 16:9
+  size cap. The player therefore leaves room for the header, now-playing card,
+  and utility rail instead of expanding to the full TV browser surface.
+- Verification: root lint, TypeScript, production build, and all 11 desktop
+  shell/browser checks passed. A focused active-room Playwright assertion now
+  covers the 960x540 layout, but it was not executed because the configured
+  playback suite writes room/search fixtures and the live MVP database must not
+  be used for mutating tests. Real TV-browser checks remain part of the open
+  Phase 7 device matrix.
 
 ## Session handoff template
 

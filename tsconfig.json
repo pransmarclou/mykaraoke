@@ -39,6 +39,7 @@
   ],
   "exclude": [
     "node_modules",
-    ".next-phase7"
+    ".next-phase7",
+    "apps/mobile"
   ]
 }

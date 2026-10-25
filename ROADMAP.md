@@ -24,8 +24,10 @@ TV pairing/waiting states, a five-second singer-ready transition, and
 directional remote focus. CSP, deployed smoke, and physical-device evidence
 remain open. The web remains usable without an app or payment.
 
-Only after the web MVP is accepted: native N1 builds iOS/Android core party
-actions; N2 adds app-scanned QR pairing to the web big screen; N3 covers
+The owner directed Native N1 foundation work to begin on 2026-10-24 while the
+web verification gates remain deferred. The Expo/React Native shell and secure
+Google-account boundary are implemented; native create/join, queue, and host
+controls remain next. N2 adds app-scanned QR pairing to the web big screen; N3 covers
 native microphone and approved feature parity; N4 adds optional native store
 subscriptions plus the Free rewarded-song-credit model: 10 initial credits and
 10 more after an explicitly accepted, verified Google rewarded ad. Premium

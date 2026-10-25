@@ -34,8 +34,9 @@
   dedicated hosted test project, run `tests/integration/scores.test.ts` and
   `tests/e2e/scores.spec.ts`, and reconcile migration history. The hosted MVP
   table and rating-permission column are already present.
-- Finish the cross-browser web MVP through Phase 10 before building the native
-  app. Do not add a web paywall or mandatory app-install gate in that stage.
+- Keep the deferred web Phase 7–10 gates visible while the owner-directed
+  Native N1 work proceeds. Do not add a web paywall or mandatory app-install
+  gate.
 - Phase 10 readiness gate: use `/compatibility` as the honest browser-side
   preflight, then fill the named physical iPhone, Android, Windows, TV-browser,
   Bluetooth, latency, disconnect, and Firefox evidence gaps. API detection is
@@ -47,8 +48,12 @@
   apply npm's suggested breaking downgrade for the dev-only
   `eslint-config-next -> braces` advisory; recheck for a compatible upstream
   release.
-- After the web gate, decide the native stack and account migration, then build
-  app-scanned QR pairing to a web-display claim before subscriptions.
+- Native N1: add `mykaraoke://**` to hosted Supabase Auth redirect URLs, place
+  only the browser-safe Supabase URL/publishable key in `apps/mobile/.env.local`,
+  then verify Google sign-in/sign-out in real iOS and Android development builds.
+- Native N1 next slice: define versioned bearer-token room APIs, map validated
+  Supabase identity to a native room actor, and implement create/join before
+  app-scanned QR pairing or subscriptions.
 - For Native N4, implement the documented Free/Premium model: 10 initial
   qualifying song credits, then an optional verified Google rewarded ad for
   another 10; Premium has unlimited MyKaraoke credits and no MyKaraoke ads.

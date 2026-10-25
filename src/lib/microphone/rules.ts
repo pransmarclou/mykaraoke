@@ -35,11 +35,32 @@ export interface MicrophoneCapability extends MicrophoneCapabilityInput {
   reason: "insecure" | "media-devices" | "audio-context" | null;
 }
 
+export interface BrowserDeviceIdentity {
+  userAgent: string;
+  platform: string;
+  maxTouchPoints: number;
+}
+
 export const MICROPHONE_LIMITS = {
   inputGain: { min: 0, max: 2 },
   outputVolume: { min: 0, max: 1 },
   reverbMix: { min: 0, max: 0.6 },
 } as const;
+
+export function isAppleMobileDevice(input: BrowserDeviceIdentity): boolean {
+  return /iPhone|iPad|iPod/iu.test(input.userAgent)
+    || (input.platform === "MacIntel" && input.maxTouchPoints > 1);
+}
+
+export function microphoneAudioConstraint(deviceId: string | undefined, appleMobile: boolean): true | MediaTrackConstraints {
+  if (appleMobile) return true;
+  return {
+    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  };
+}
 
 export function clampMicrophoneParameter(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) return min;

@@ -132,6 +132,23 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     }
     const tvWidths = await tv.evaluate(() => ({ document: document.documentElement.scrollWidth, viewport: window.innerWidth }));
     expect(tvWidths.document).toBeLessThanOrEqual(tvWidths.viewport + 1);
+    await tv.setViewportSize({ width: 960, height: 540 });
+    const compactTvLayout = await tv.evaluate(() => {
+      const player = document.querySelector<HTMLElement>("[data-testid='tv-player']")?.getBoundingClientRect();
+      const rail = document.querySelector<HTMLElement>("[data-testid='tv-utility-rail']")?.getBoundingClientRect();
+      return player && rail ? {
+        playerHeight: player.height,
+        playerRight: player.right,
+        railLeft: rail.left,
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+      } : null;
+    });
+    expect(compactTvLayout).not.toBeNull();
+    expect(compactTvLayout!.playerHeight).toBeLessThanOrEqual(253);
+    expect(compactTvLayout!.railLeft).toBeGreaterThanOrEqual(compactTvLayout!.playerRight - 1);
+    expect(compactTvLayout!.documentWidth).toBeLessThanOrEqual(compactTvLayout!.viewportWidth + 1);
+    await tv.setViewportSize({ width: 1280, height: 720 });
     await expect(tv.getByTestId("singer-countdown")).toBeVisible();
     await expect(tv.getByRole("button", { name: "Singer getting ready" })).toBeDisabled();
     await expect(tv.getByTestId("tv-player").locator("iframe")).toBeVisible();
@@ -143,7 +160,8 @@ test("host pairs a TV, guest queues songs, and the player advances after an end 
     await guest.getByRole("tab", { name: "Stage" }).click();
     await expect(guest.getByText("Player: playing")).toBeVisible({ timeout: 10_000 });
     await expect(guest.getByText(`Singer: Alex`)).toBeVisible();
-    await expect(page.getByTestId("remote-mic-host")).toContainText("Singer phone microphone");
+    await expect(page.getByTestId("remote-mic-host")).toHaveCount(0);
+    await expect(tv.getByTestId("remote-mic-host")).toContainText("Singer phone microphone");
     await expect(guest.getByTestId("remote-mic-guest").getByRole("button", { name: "Enable my microphone" })).toBeVisible();
     await guest.getByRole("button", { name: "Send Applause" }).click();
     await expect(guest.getByRole("status").filter({ hasText: "Applause sent to the TV" })).toBeVisible();

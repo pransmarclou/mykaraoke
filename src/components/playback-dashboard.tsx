@@ -24,7 +24,7 @@ export function PlaybackDashboard({ code, role, guestId, tvUrl, showTvSetup = tr
   const canRemote = role === "host" || Boolean(state?.guestPermissions.playbackControl);
   const canReact = role === "host" || Boolean(state?.guestPermissions.reactions);
   const microphoneRole = state?.current?.requestedBy
-    ? role === "host" && state.current.requestedBy !== guestId
+    ? role === "host" && state.current.requestedBy !== guestId && !state.current.requestedByHost
       ? "host"
       : guestOwnsCurrentMicrophone(state.current.requestedBy, guestId)
         ? "guest"

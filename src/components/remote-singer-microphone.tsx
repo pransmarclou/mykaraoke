@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient, type RealtimeChannel, type SupabaseClient } from "@supabase/supabase-js";
 import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { parseRemoteMicSignalEvent, type RemoteMicCandidate, type RemoteMicSignalEvent, type RemoteMicSignalRequest } from "@/lib/microphone/remote-rules";
+import { isAppleMobileDevice, microphoneAudioConstraint } from "@/lib/microphone/rules";
 import type { PlaybackSong } from "@/lib/playback/state";
 
 type ChannelState = "connecting" | "ready" | "unavailable";
@@ -25,17 +26,18 @@ function serializeCandidate(candidate: RTCIceCandidate): RemoteMicCandidate {
   };
 }
 
-export function RemoteSingerMicrophone({ code, role, guestId, song }: {
+export function RemoteSingerMicrophone({ code, role, guestId, song, startMuted = true }: {
   code: string;
   role: "host" | "guest";
   guestId: string;
   song: PlaybackSong;
+  startMuted?: boolean;
 }) {
   const [channelState, setChannelState] = useState<ChannelState>("connecting");
   const [micState, setMicState] = useState<MicState>("idle");
   const [message, setMessage] = useState("");
   const [selfMuted, setSelfMuted] = useState(false);
-  const [hostMuted, setHostMuted] = useState(true);
+  const [hostMuted, setHostMuted] = useState(startMuted);
   const [remoteStreamReady, setRemoteStreamReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const peerRef = useRef<RTCPeerConnection | null>(null);
@@ -46,7 +48,7 @@ export function RemoteSingerMicrophone({ code, role, guestId, song }: {
   const offerRetryRef = useRef<number | null>(null);
   const iceServersRef = useRef<RTCIceServer[]>([]);
   const selfMutedRef = useRef(false);
-  const hostMutedRef = useRef(true);
+  const hostMutedRef = useRef(startMuted);
   const activeRef = useRef(true);
   const signalHandlerRef = useRef<(event: RemoteMicSignalEvent) => void>(() => undefined);
 
@@ -223,6 +225,17 @@ export function RemoteSingerMicrophone({ code, role, guestId, song }: {
             setMessage(`${song.singerName} stopped sharing their microphone.`);
             return;
           }
+          if (event.kind === "host-mute") {
+            if (event.sessionId !== sessionRef.current) return;
+            hostMutedRef.current = event.muted;
+            setHostMuted(event.muted);
+            if (audioRef.current) {
+              audioRef.current.muted = event.muted;
+              if (!event.muted) void audioRef.current.play().catch(() => setMessage("Singer microphone is ready. Press Unmute on this display to hear it."));
+            }
+            setMessage(event.muted ? `${song.singerName}'s microphone is muted.` : `${song.singerName}'s microphone is live.`);
+            return;
+          }
           if (event.kind === "candidate") {
             await addOrQueueCandidate(event);
             return;
@@ -241,8 +254,8 @@ export function RemoteSingerMicrophone({ code, role, guestId, song }: {
           pendingCandidatesRef.current = queuedCandidates;
           pendingSessionRef.current = event.sessionId;
           sessionRef.current = event.sessionId;
-          hostMutedRef.current = true;
-          setHostMuted(true);
+          hostMutedRef.current = startMuted;
+          setHostMuted(startMuted);
           setRemoteStreamReady(false);
           setMicState("connecting");
           setMessage(`${song.singerName} enabled their phone microphone. Connecting…`);
@@ -260,8 +273,9 @@ export function RemoteSingerMicrophone({ code, role, guestId, song }: {
             audioRef.current.muted = hostMutedRef.current;
             setRemoteStreamReady(true);
             setMicState("live");
-            setMessage("Singer microphone connected. It is muted until you choose to hear it.");
-            void audioRef.current.play().catch(() => setMessage("Singer microphone connected. Use Unmute to start the audio."));
+            audioRef.current.muted = hostMutedRef.current;
+            setMessage(hostMutedRef.current ? "Singer microphone connected. It is muted until you choose to hear it." : "Singer microphone connected and live on this display.");
+            void audioRef.current.play().catch(() => setMessage("Singer microphone connected. Press Unmute on this display to hear it."));
           };
           peer.onconnectionstatechange = () => {
             if (!activeRef.current || peerRef.current !== peer) return;
@@ -276,7 +290,7 @@ export function RemoteSingerMicrophone({ code, role, guestId, song }: {
           const answer = await peer.createAnswer();
           await peer.setLocalDescription(answer);
           await postSignal({ kind: "answer", itemId: song.id, sessionId: event.sessionId, guestId, description: { type: "answer", sdp: answer.sdp ?? "" } });
-          await postSignal({ kind: "host-mute", itemId: song.id, sessionId: event.sessionId, guestId, muted: true });
+          await postSignal({ kind: "host-mute", itemId: song.id, sessionId: event.sessionId, guestId, muted: startMuted });
         } catch (error) {
           if (!activeRef.current) return;
           setMicState("error");
@@ -294,9 +308,10 @@ export function RemoteSingerMicrophone({ code, role, guestId, song }: {
       return;
     }
     setMicState("requesting");
-    setMessage("Choose Allow when your browser asks for microphone access.");
+    const appleMobile = isAppleMobileDevice({ userAgent: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints });
+    setMessage(appleMobile ? "Choose Allow to use this iPhone's microphone." : "Choose Allow when your browser asks for microphone access.");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: microphoneAudioConstraint(undefined, appleMobile) });
       if (!activeRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       closePeer(true);
       streamRef.current = stream;
@@ -343,7 +358,7 @@ export function RemoteSingerMicrophone({ code, role, guestId, song }: {
         void postSignal({ kind: "offer", itemId: song.id, sessionId, description: { type: "offer", sdp: local.sdp } }).catch(() => undefined);
       }, 3_000);
       setMicState("connecting");
-      setMessage("Microphone enabled. Waiting for the host device to connect and unmute it.");
+      setMessage(appleMobile ? "iPhone microphone enabled. Connecting it to the TV display…" : "Microphone enabled. Waiting for the host device to connect and unmute it.");
     } catch (error) {
       closePeer(true);
       sessionRef.current = null;

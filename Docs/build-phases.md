@@ -8,8 +8,10 @@ Do not begin the next phase merely because code exists; the current phase must
 be demonstrably functional or explicitly marked **verification pending** with
 the missing environment or hardware named.
 
-Phases 0–10 are the web track. The native N1–N5 track starts only after the
-cross-browser web MVP passes Phase 10 and the owner approves that handoff.
+Phases 0–10 are the web track. The planned order starts native N1–N5 only after
+the cross-browser web MVP passes Phase 10. On 2026-10-24 the owner explicitly
+directed Native N1 foundation work to begin while the named web verification
+gates remain deferred; this exception does not accept or close those gates.
 Completed phase numbers are preserved. Each track is divided into testable
 vertical slices rather than a screen-first build.
 
@@ -37,7 +39,7 @@ vertical slices rather than a screen-first build.
 | 8 | Local Microphone Studio | Microphone Studio | VERIFICATION PENDING |
 | 9 | Singer and party experience | Party Experience | IN BUILD |
 | 10 | Cross-browser web MVP, compatibility, and launch | Web release | IN BUILD |
-| N1 | Native app foundation and core party actions | iOS/Android | NOT STARTED |
+| N1 | Native app foundation and core party actions | iOS/Android | IN BUILD |
 | N2 | App-scanned QR pairing to the web big screen | iOS/Android + web display | NOT STARTED |
 | N3 | Native microphone and approved feature parity | iOS/Android | NOT STARTED |
 | N4 | Native subscriptions and shared entitlements | Monetization | NOT STARTED |
@@ -396,8 +398,9 @@ test project, and the combined acceptance gate remains open. The owner directed
 Phase 10 to begin while this evidence remains explicitly deferred. An additive
 optional-account slice now supplies hosted email/password access, password
 recovery, and Google OAuth wiring. It does not migrate browser-local favorites,
-room queues, or history into an account. Google is not live until the hosted
-Supabase project has a reviewed OAuth client and provider enabled.
+room queues, or history into an account. Google OAuth is enabled in the hosted
+Supabase project and its production handoff reaches Google's consent screen;
+a completed human consent/session round trip remains the acceptance check.
 
 ### User-facing outcome
 
@@ -527,6 +530,13 @@ subscription work is presented as part of web MVP completion.
 ---
 
 ## Native N1 — App foundation and core party actions
+
+Implementation began on 2026-10-24 with an Expo SDK 58 / React Native / Expo
+Router project under `apps/mobile`. The first tested slice provides branded
+iOS/Android bundles, a secure persisted Supabase session adapter, Google OAuth
+handoff and native deep-link return handling, truthful configuration/disabled
+states, and account sign-out. Native room APIs and real-device OAuth remain
+pending; this is not core-party parity or an accepted N1 gate.
 
 ### User-facing outcome
 

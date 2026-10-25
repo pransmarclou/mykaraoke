@@ -397,6 +397,48 @@ body {
   filter: saturate(0.9) contrast(1.04);
 }
 
+.tv-stage-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tv-utility-rail {
+  min-height: 32rem;
+}
+
+.tv-player-frame {
+  width: min(100%, calc((100vh - 22rem) * 16 / 9));
+  max-width: 100%;
+}
+
+@supports (height: 100dvh) {
+  .tv-player-frame {
+    width: min(100%, calc((100dvh - 22rem) * 16 / 9));
+  }
+}
+
+@media (max-height: 800px) {
+  .tv-player-frame {
+    width: min(100%, calc((100vh - 18rem) * 16 / 9));
+  }
+
+  @supports (height: 100dvh) {
+    .tv-player-frame {
+      width: min(100%, calc((100dvh - 18rem) * 16 / 9));
+    }
+  }
+}
+
+@media (min-width: 1280px), (min-width: 800px) and (min-aspect-ratio: 4 / 3) {
+  .tv-stage-layout {
+    grid-template-columns: minmax(0, 1fr) clamp(16rem, 24vw, 26rem);
+  }
+
+  .tv-utility-rail {
+    min-height: 0;
+    height: 100%;
+  }
+}
+
 .tv-stage-banner-track {
   animation: tv-stage-banner-scroll 22s linear infinite;
   will-change: transform;

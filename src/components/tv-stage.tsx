@@ -13,6 +13,7 @@ import { youtubeThumbnailUrl } from "@/lib/songs/thumbnail";
 import type { SongResult } from "@/lib/songs/youtube";
 import { RoomScores } from "@/components/room-scores";
 import { PartyNotificationToasts } from "@/components/party-notification-toasts";
+import { RemoteSingerMicrophone } from "@/components/remote-singer-microphone";
 import { parsePartyNotification, type PartyNotification } from "@/lib/rooms/notification-rules";
 import {
   shouldShowTvSongStartNotice,
@@ -87,13 +88,14 @@ function loadPlayerApi(): Promise<PlayerApi> {
   return playerApiPromise;
 }
 
-function YoutubeStage({ song, desired, canActivate, autoActivate, onEvent }: { song: PlaybackSong; desired: PlaybackSnapshot["desired"]; canActivate: boolean; autoActivate: boolean; onEvent: (itemId: string, event: TvPlayerEvent, errorCode?: number) => void }) {
+function YoutubeStage({ song, desired, canActivate, onEvent }: { song: PlaybackSong; desired: PlaybackSnapshot["desired"]; canActivate: boolean; onEvent: (itemId: string, event: TvPlayerEvent, errorCode?: number) => void }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
   const activatedRef = useRef(false);
   const desiredRef = useRef(desired);
   const [ready, setReady] = useState(false);
   const [activation, setActivation] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const [loadError, setLoadError] = useState("");
   useEffect(() => { desiredRef.current = desired; }, [desired]);
 
@@ -118,7 +120,7 @@ function YoutubeStage({ song, desired, canActivate, autoActivate, onEvent }: { s
             } else if (event.data === 2) onEvent(song.id, "paused");
           },
           onError: (event) => { if (mounted) onEvent(song.id, "error", event.data); },
-          onAutoplayBlocked: () => { if (mounted) { activatedRef.current = false; setActivation(false); onEvent(song.id, "blocked"); } },
+          onAutoplayBlocked: () => { if (mounted) { activatedRef.current = false; setActivation(false); setBlocked(true); onEvent(song.id, "blocked"); } },
         },
       });
     }).catch(() => { if (mounted) { setLoadError("YouTube could not load. Ask the host to skip this song or try again."); onEvent(song.id, "error", 0); } });
@@ -132,28 +134,29 @@ function YoutubeStage({ song, desired, canActivate, autoActivate, onEvent }: { s
   }, [desired, ready]);
 
   useEffect(() => {
-    if (!autoActivate || !canActivate || !ready || activatedRef.current) return;
+    if (blocked || !canActivate || !ready || activatedRef.current) return;
     activatedRef.current = true;
     setActivation(true);
     if (desired === "play") playerRef.current?.playVideo();
-  }, [autoActivate, canActivate, desired, ready]);
+  }, [blocked, canActivate, desired, ready]);
 
   function activate() {
     if (!canActivate) return;
+    setBlocked(false);
     activatedRef.current = true;
     setActivation(true);
     if (desired === "play") playerRef.current?.playVideo();
   }
 
   return <div>
-    <div className="aspect-video min-h-[240px] w-full overflow-hidden rounded-2xl border border-white/15 bg-black" data-testid="tv-player"><div ref={mountRef} className="h-full w-full" /></div>
-    {!activation || !ready ? <button type="button" onClick={activate} disabled={!canActivate} data-tv-focus className="mt-5 flex min-h-14 items-center gap-2 rounded-xl bg-[#d92362] px-6 py-3 font-bold text-white outline-none focus-visible:ring-4 focus-visible:ring-[#ffc16f] disabled:cursor-wait disabled:opacity-60"><Play className="size-5" aria-hidden="true" />{!canActivate ? "Singer getting ready" : ready ? "Start video" : "Enable YouTube player"}</button> : null}
+    <div className="tv-player-frame mx-auto aspect-video overflow-hidden rounded-2xl border border-white/15 bg-black" data-testid="tv-player"><div ref={mountRef} className="h-full w-full" /></div>
+    {blocked ? <button type="button" onClick={activate} data-tv-focus className="mt-5 flex min-h-14 items-center gap-2 rounded-xl bg-[#d92362] px-6 py-3 font-bold text-white outline-none focus-visible:ring-4 focus-visible:ring-[#ffc16f] disabled:cursor-wait disabled:opacity-60"><Play className="size-5" aria-hidden="true" />Start video</button> : null}
     {activation ? <p className="mt-3 text-sm text-muted-foreground">If your browser blocks playback, press Play inside the YouTube player.</p> : null}
     {loadError ? <p role="alert" className="mt-3 text-sm text-[#ffb0a2]">{loadError}</p> : null}
   </div>;
 }
 
-function SingerStage({ song, desired, autoActivate, onEvent }: { song: PlaybackSong; desired: PlaybackSnapshot["desired"]; autoActivate: boolean; onEvent: (itemId: string, event: TvPlayerEvent, errorCode?: number) => void }) {
+function SingerStage({ song, desired, onEvent }: { song: PlaybackSong; desired: PlaybackSnapshot["desired"]; onEvent: (itemId: string, event: TvPlayerEvent, errorCode?: number) => void }) {
   const [remaining, setRemaining] = useState(SINGER_COUNTDOWN_SECONDS);
 
   useEffect(() => {
@@ -166,9 +169,9 @@ function SingerStage({ song, desired, autoActivate, onEvent }: { song: PlaybackS
 
   return (
     <div className="relative">
-      <YoutubeStage song={song} desired={desired} canActivate={remaining === 0} autoActivate={autoActivate} onEvent={onEvent} />
+      <YoutubeStage song={song} desired={desired} canActivate={remaining === 0} onEvent={onEvent} />
       {remaining > 0 ? (
-        <div className="absolute inset-x-0 top-0 z-10 grid aspect-video min-h-[240px] place-items-center rounded-2xl border border-[#ffad69]/40 bg-[#0b0d16]/95 p-8 text-center" role="status" aria-live="polite" data-testid="singer-countdown">
+        <div className="tv-player-frame absolute top-0 left-1/2 z-10 grid aspect-video -translate-x-1/2 place-items-center rounded-2xl border border-[#ffad69]/40 bg-[#0b0d16]/95 p-5 text-center sm:p-8" role="status" aria-live="polite" data-testid="singer-countdown">
           <div>
             <p className="eyebrow">Coming to the stage</p>
             <p className="mt-5 text-[clamp(2rem,5vw,4.75rem)] leading-none font-black tracking-[-0.05em] text-white">{singerLabel(song)}</p>
@@ -312,7 +315,7 @@ function TvJoinCard({ code, qrDataUrl }: { code: string; qrDataUrl: string }) {
 
 function TvUtilityRail({ code, qrDataUrl, state }: { code: string; qrDataUrl: string; state: PlaybackSnapshot }) {
   const [tab, setTab] = useState<TvRailTab>("queue");
-  return <aside className="flex min-h-[32rem] min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#111219]/95 shadow-[0_24px_70px_rgba(0,0,0,.22)]" aria-label="TV party information" data-testid="tv-utility-rail">
+  return <aside className="tv-utility-rail flex min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#111219]/95 shadow-[0_24px_70px_rgba(0,0,0,.22)]" aria-label="TV party information" data-testid="tv-utility-rail">
     <div className="grid grid-cols-3 border-b border-white/10" role="tablist" aria-label="Party information">
       {TV_RAIL_TABS.map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} aria-controls="tv-party-panel" id={`tv-tab-${item.id}`} onClick={() => setTab(item.id)} data-tv-focus className={`min-h-16 border-b-2 px-2 text-sm font-black outline-none transition focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#ffc16f] ${tab === item.id ? "border-[#ff6e8f] text-[#ffc16f]" : "border-transparent text-muted-foreground hover:text-white"}`}>{item.label}</button>)}
     </div>
@@ -343,11 +346,6 @@ export function TvStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }
   const [partyNotifications, setPartyNotifications] = useState<PartyNotification[]>([]);
   const [fullscreen, setFullscreen] = useState(false);
   const [startNotice, setStartNotice] = useState<TvStartNotice | null>(null);
-  const [autoActivate] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try { return window.sessionStorage.getItem(`mykaraoke:tv-autoplay:${code}`) === "1"; }
-    catch { return false; }
-  });
   const endedRef = useRef(false);
   const reactionTimers = useRef(new Map<string, number>());
   const notificationTimers = useRef(new Map<string, number>());
@@ -546,8 +544,8 @@ export function TvStage({ code, qrDataUrl }: { code: string; qrDataUrl: string }
     </header>
     {ended ? <div className="grid flex-1 place-items-center py-12 text-center"><div><p className="eyebrow">Session finished</p><p role="alert" className="mt-5 text-3xl font-black text-[#ffb0a2]">This room ended or expired.</p><p className="mt-3 text-muted-foreground">Playback has stopped. Ask the host for a new room.</p></div></div> : null}
     {!state && !ended ? <div className="grid flex-1 place-items-center py-12"><p role="status" className="flex items-center gap-3 text-lg text-muted-foreground"><span className="size-3 animate-pulse rounded-full bg-primary" aria-hidden="true" />Connecting to the room…</p></div> : null}
-    {state && !ended ? <div className="grid min-w-0 flex-1 items-stretch gap-5 pb-5 xl:grid-cols-[minmax(0,1.72fr)_minmax(22rem,0.62fr)]">
-      <div className="relative min-w-0" data-testid="tv-stage-column">{state.current ? <div className="rounded-[1.75rem] border border-white/10 bg-[#111219]/80 p-4 shadow-[0_24px_70px_rgba(0,0,0,.22)] sm:p-5"><SingerStage key={state.current.id} song={state.current} desired={state.desired} autoActivate={autoActivate} onEvent={onEvent} /><NowPlayingSummary state={state} /></div> : <WaitingStage code={code} qrDataUrl={qrDataUrl} />}
+    {state && !ended ? <div className="tv-stage-layout grid min-w-0 flex-1 items-stretch gap-5 pb-5">
+      <div className="relative min-w-0" data-testid="tv-stage-column">{state.current ? <div className="rounded-[1.75rem] border border-white/10 bg-[#111219]/80 p-4 shadow-[0_24px_70px_rgba(0,0,0,.22)] sm:p-5"><SingerStage key={state.current.id} song={state.current} desired={state.desired} onEvent={onEvent} /><NowPlayingSummary state={state} />{state.current.requestedBy && state.current.requestedByHost ? <RemoteSingerMicrophone key={`tv-mic:${state.current.id}:${state.current.requestedBy}`} code={code} role="host" guestId={state.current.requestedBy} song={state.current} startMuted={false} /> : null}</div> : <WaitingStage code={code} qrDataUrl={qrDataUrl} />}
         <div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 h-40 overflow-hidden" aria-live="polite" aria-label="Party reactions">
           {reactions.map((reaction, index) => <div key={reaction.id} className="tv-reaction absolute bottom-0 rounded-2xl border border-white/20 bg-[#17101d]/90 px-4 py-2 shadow-2xl motion-reduce:animate-none" style={{ left: `${8 + ((index * 17) % 72)}%` }}><span className="text-4xl" aria-hidden="true">{reactionEmoji(reaction.reaction)}</span><span className="ml-2 text-sm font-bold text-white">{reaction.sender}</span></div>)}
         </div>

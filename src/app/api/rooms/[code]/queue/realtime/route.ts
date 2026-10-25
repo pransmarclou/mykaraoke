@@ -32,7 +32,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cod
       [access.roomId],
     );
     const current = room.rows[0];
-    const mayUseMicrophone = access.role === "host" || (access.role === "guest" && access.guestId === current.requested_by);
+    const mayUseMicrophone = access.role === "tv" || access.role === "host" || (access.role === "guest" && access.guestId === current.requested_by);
     const microphoneTopic = mayUseMicrophone && current.current_item_id && current.requested_by
       ? configuredRemoteMicTopic(current.queue_topic, current.current_item_id, current.requested_by)
       : null;

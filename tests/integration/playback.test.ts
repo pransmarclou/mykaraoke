@@ -127,6 +127,7 @@ test("only the guest who requested the current song can signal a phone microphon
   await pairTv(host.room.code, await issueTvPairCode(host.room.id));
   const started = await playbackSnapshot(host.room.id);
   assert.equal(started.current?.requestedBy, owner.guest.id);
+  assert.equal(started.current?.requestedByHost, true);
   const itemId = started.current!.id;
   const sessionId = randomUUID();
   const offer = { kind: "offer" as const, itemId, sessionId, description: { type: "offer" as const, sdp: "v=0" } };

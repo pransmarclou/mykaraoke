@@ -6,12 +6,15 @@ import {
   MICROPHONE_LIMITS,
   clampMicrophoneParameter,
   detectMicrophoneCapability,
+  isAppleMobileDevice,
+  microphoneAudioConstraint,
   microphoneErrorEvent,
   microphoneTransition,
   type MicrophoneCapability,
 } from "@/lib/microphone/rules";
 
 type AudioContextWithSink = AudioContext & { setSinkId?: (sinkId: string) => Promise<void> };
+type AudioWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
 
 interface AudioGraph {
   context: AudioContextWithSink;
@@ -67,6 +70,7 @@ export function MicrophoneStudio() {
   const [muted, setMuted] = useState(false);
   const [level, setLevel] = useState(0);
   const [detail, setDetail] = useState("");
+  const [appleMobile, setAppleMobile] = useState(false);
   const graphRef = useRef<AudioGraph | null>(null);
   const monitoringRef = useRef(false);
 
@@ -103,8 +107,13 @@ export function MicrophoneStudio() {
     let pendingStream: MediaStream | null = null;
     let pendingContext: AudioContextWithSink | null = null;
     try {
+      const AudioContextConstructor = window.AudioContext || (window as AudioWindow).webkitAudioContext;
+      if (!AudioContextConstructor) throw new DOMException("Web Audio is unavailable", "NotSupportedError");
+      const context = new AudioContextConstructor() as AudioContextWithSink;
+      pendingContext = context;
+      if (context.state === "suspended") await context.resume();
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+        audio: microphoneAudioConstraint(deviceId, appleMobile),
         video: false,
       });
       pendingStream = stream;
@@ -114,10 +123,6 @@ export function MicrophoneStudio() {
         dispatch("missing");
         return;
       }
-
-      const AudioContextConstructor = window.AudioContext;
-      const context = new AudioContextConstructor() as AudioContextWithSink;
-      pendingContext = context;
       const source = context.createMediaStreamSource(stream);
       const input = context.createGain();
       const analyser = context.createAnalyser();
@@ -166,7 +171,7 @@ export function MicrophoneStudio() {
       };
 
       const availableDevices = await refreshDevices();
-      const activeDevice = track.getSettings().deviceId || deviceId || availableDevices[0]?.deviceId || "";
+      const activeDevice = appleMobile ? "" : track.getSettings().deviceId || deviceId || availableDevices[0]?.deviceId || "";
       setSelectedDevice(activeDevice);
       dispatch("grant");
     } catch (error) {
@@ -178,11 +183,13 @@ export function MicrophoneStudio() {
         ? "The microphone is busy in another app or could not be opened. Close the other app and retry."
         : "Microphone setup could not be completed. Check browser and system audio settings, then retry.");
     }
-  }, [applyOutput, compression, disposeGraph, inputGain, muted, outputVolume, refreshDevices, reverbMix]);
+  }, [appleMobile, applyOutput, compression, disposeGraph, inputGain, muted, outputVolume, refreshDevices, reverbMix]);
 
   useEffect(() => {
-    const audioContext = typeof window !== "undefined" && typeof window.AudioContext === "function";
-    const outputSelection = audioContext && "setSinkId" in window.AudioContext.prototype;
+    const AudioContextConstructor = window.AudioContext || (window as AudioWindow).webkitAudioContext;
+    const audioContext = typeof AudioContextConstructor === "function";
+    const outputSelection = audioContext && "setSinkId" in AudioContextConstructor.prototype;
+    const nextAppleMobile = isAppleMobileDevice({ userAgent: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints });
     const next = detectMicrophoneCapability({
       secureContext: window.isSecureContext,
       mediaDevices: Boolean(navigator.mediaDevices),
@@ -192,6 +199,7 @@ export function MicrophoneStudio() {
     // Capability values only exist after the Client Component reaches the browser.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCapability(next);
+    setAppleMobile(nextAppleMobile);
     if (!next.supported) dispatch("unsupported");
   }, []);
 
@@ -322,16 +330,19 @@ export function MicrophoneStudio() {
       {status === "disconnected" ? <p role="alert" className="mt-5 text-sm leading-6 text-[#ffb0a2]">{detail || "The selected microphone disconnected."}</p> : null}
       {status === "error" ? <p role="alert" className="mt-5 text-sm leading-6 text-[#ffb0a2]">{detail}</p> : null}
 
-      {!active && status !== "unsupported" ? <button type="button" disabled={status === "requesting"} onClick={() => void startCapture(selectedDevice || undefined)} className="queue-action mt-5"><RefreshCw className={`size-4 ${status === "requesting" ? "animate-spin" : ""}`} aria-hidden="true" />{status === "idle" ? "Enable microphone" : status === "requesting" ? "Requesting permission…" : "Retry microphone"}</button> : null}
+      {!active && status !== "unsupported" ? <button type="button" disabled={status === "requesting"} onClick={() => void startCapture(appleMobile ? undefined : selectedDevice || undefined)} className="queue-action mt-5"><RefreshCw className={`size-4 ${status === "requesting" ? "animate-spin" : ""}`} aria-hidden="true" />{status === "idle" ? "Enable microphone" : status === "requesting" ? "Requesting permission…" : "Retry microphone"}</button> : null}
 
       {active ? <div className="mt-6 space-y-6">
-        <div>
+        {appleMobile ? <div className="rounded-xl border border-[#ffad69]/20 bg-[#ffad69]/5 p-4">
+          <p className="text-sm font-bold text-white">iPhone microphone</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">MyKaraoke uses the iPhone&apos;s system-selected input. With no headset or external microphone connected, this is the built-in microphone.</p>
+        </div> : <div>
           <label htmlFor="microphone-input" className="text-sm font-bold text-white">Input device</label>
           <select id="microphone-input" value={selectedDevice} onChange={(event) => { const value = event.target.value; setSelectedDevice(value); void startCapture(value); }} className="mt-2 h-11 w-full rounded-xl border border-white/15 bg-[#17141f] px-3 text-sm text-white">
             {devices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{deviceLabel(device, index)}</option>)}
           </select>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">USB and audio-interface inputs appear here only when your browser and operating system expose them.</p>
-        </div>
+        </div>}
 
         <div>
           <div className="flex items-center justify-between gap-4 text-sm"><span className="font-bold text-white">Input level</span><span className="text-muted-foreground">{Math.round(level * 100)}%</span></div>

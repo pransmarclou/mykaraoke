@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "MyKaraoke",
+    "slug": "mykaraoke",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/mykaraoke-app-icon.png",
+    "scheme": "mykaraoke",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.nookstudio.mykaraoke",
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0D16",
+        "foregroundImage": "./assets/images/mykaraoke-app-icon.png"
+      },
+      "package": "com.nookstudio.mykaraoke",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "server",
+      "favicon": "./assets/images/mykaraoke-app-icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-web-browser",
+        {
+          "experimentalLauncherActivity": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0B0D16",
+          "image": "./assets/images/mykaraoke-microphone.png",
+          "imageWidth": 128
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

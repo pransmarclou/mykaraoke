@@ -13,7 +13,7 @@ const PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/u;
 
-export type PlaybackSong = { id: string; youtubeId: string; title: string; channelTitle: string; singerName: string; duetSingerName: string | null; durationSeconds: number; requestedBy: string | null };
+export type PlaybackSong = { id: string; youtubeId: string; title: string; channelTitle: string; singerName: string; duetSingerName: string | null; durationSeconds: number; requestedBy: string | null; requestedByHost: boolean };
 export type PlaybackSnapshot = {
   version: number;
   desired: "play" | "pause";
@@ -32,10 +32,10 @@ export class PlaybackError extends Error {
   constructor(public readonly reason: "invalid" | "forbidden" | "not_allowed" | "limited" | "ended" | "empty" | "no_device" | "current" | "pair_invalid" | "pair_limited") { super(reason); }
 }
 
-type SongRow = { id: string; youtube_id: string; title: string; channel_title: string; singer_name: string; duet_singer_name: string | null; duration_seconds: number; requested_by: string | null };
+type SongRow = { id: string; youtube_id: string; title: string; channel_title: string; singer_name: string; duet_singer_name: string | null; duration_seconds: number; requested_by: string | null; requested_by_host: boolean };
 type StateRow = { current_item_id: string | null; desired: PlaybackSnapshot["desired"]; observed: PlaybackSnapshot["observed"]; error_code: number | null; version: string; device_hash: Buffer | null; device_seen_at: Date | null };
 function song(row: SongRow | undefined): PlaybackSong | null {
-  return row ? { id: row.id, youtubeId: row.youtube_id, title: row.title, channelTitle: row.channel_title, singerName: row.singer_name, duetSingerName: row.duet_singer_name, durationSeconds: row.duration_seconds, requestedBy: row.requested_by } : null;
+  return row ? { id: row.id, youtubeId: row.youtube_id, title: row.title, channelTitle: row.channel_title, singerName: row.singer_name, duetSingerName: row.duet_singer_name, durationSeconds: row.duration_seconds, requestedBy: row.requested_by, requestedByHost: row.requested_by_host } : null;
 }
 function pairDigest(code: string): Buffer { return createHash("sha256").update(code, "ascii").digest(); }
 function validPairCode(code: string): boolean { return code.length === 8 && [...code].every((character) => PAIR_ALPHABET.includes(character)); }
@@ -53,20 +53,39 @@ async function stateForRoom(client: PoolClient, roomId: string): Promise<StateRo
 }
 async function currentSong(client: PoolClient, id: string | null): Promise<PlaybackSong | null> {
   if (!id) return null;
-  const result = await client.query<SongRow>("select id, youtube_id, title, channel_title, singer_name, duet_singer_name, duration_seconds, requested_by from public.queue_items where id = $1", [id]);
+  const result = await client.query<SongRow>(
+    `select q.id, q.youtube_id, q.title, q.channel_title, q.singer_name, q.duet_singer_name,
+            q.duration_seconds, q.requested_by,
+            coalesce(r.host_member_id = q.requested_by, false) as requested_by_host
+       from public.queue_items q
+       join public.rooms r on r.id = q.room_id
+      where q.id = $1`,
+    [id],
+  );
   return song(result.rows[0]);
 }
 async function nextSong(client: PoolClient, roomId: string): Promise<PlaybackSong | null> {
-  const result = await client.query<SongRow>("select id, youtube_id, title, channel_title, singer_name, duet_singer_name, duration_seconds, requested_by from public.queue_items where room_id = $1 and status = 'queued' order by position limit 1", [roomId]);
+  const result = await client.query<SongRow>(
+    `select q.id, q.youtube_id, q.title, q.channel_title, q.singer_name, q.duet_singer_name,
+            q.duration_seconds, q.requested_by,
+            coalesce(r.host_member_id = q.requested_by, false) as requested_by_host
+       from public.queue_items q
+       join public.rooms r on r.id = q.room_id
+      where q.room_id = $1 and q.status = 'queued'
+      order by q.position limit 1`,
+    [roomId],
+  );
   return song(result.rows[0]);
 }
 async function upcomingSongs(client: PoolClient, roomId: string): Promise<{ items: PlaybackSong[]; total: number }> {
   const result = await client.query<SongRow & { queued_count: string }>(
-    `select id, youtube_id, title, channel_title, singer_name, duet_singer_name, duration_seconds, requested_by,
+    `select q.id, q.youtube_id, q.title, q.channel_title, q.singer_name, q.duet_singer_name, q.duration_seconds, q.requested_by,
+            coalesce(r.host_member_id = q.requested_by, false) as requested_by_host,
             count(*) over()::text as queued_count
-       from public.queue_items
-      where room_id = $1 and status = 'queued'
-      order by position
+       from public.queue_items q
+       join public.rooms r on r.id = q.room_id
+      where q.room_id = $1 and q.status = 'queued'
+      order by q.position
       limit 8`,
     [roomId],
   );

@@ -29,6 +29,9 @@ reconciliation are still required. Phase 10 is now in build with a public,
 non-invasive browser readiness check plus verified response-header hardening.
 Runtime dependencies audit clean; the documented development-only lint-chain
 advisory, CSP, hosted smoke checks, and physical device matrix remain open.
+On 2026-10-24 the owner explicitly directed Native N1 to begin despite those
+open web gates. Keep every deferred web limitation visible, preserve the free
+browser experience, and do not advance native billing ahead of N1–N3.
 
 Work one functional phase at a time. A phase is complete only after its
 behavior is implemented, tested, documented, and accepted. Do not build all

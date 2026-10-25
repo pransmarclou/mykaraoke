@@ -2,7 +2,12 @@
 
 ## Implementation status
 
-As of 2026-10-22, Phase 10 is in build. Phase 9 browser-local song favorites,
+As of 2026-10-24, Phase 10 remains in build and the owner has explicitly begun
+the Native N1 foundation while its deferred web/device gates remain open. A
+separate Expo SDK 58 / React Native app now builds for iOS and Android with
+MyKaraoke branding, Expo Router navigation, secure persisted Supabase sessions,
+and a Google OAuth/deep-link account boundary. Native room actions are not yet
+implemented, and no subscription or Premium entitlement is active. Phase 9 browser-local song favorites,
 ephemeral TV reactions, fair singer rotation, duet singer assignment, guest
 permissions/phone remote, and audience ratings with a live leaderboard as
 implemented slices. Three accessible themes now apply the owner-brand Stage
@@ -50,8 +55,7 @@ commands. Favorites do not sync to an account. Optional hosted Supabase Auth
 now provides email registration, email/password sign-in, confirmation,
 password recovery, sign-out, persistent cookie sessions, and a Google OAuth
 entry point without gating anonymous hosting or joining. The hosted project
-currently has Google disabled, so the UI truthfully disables that button until
-its OAuth client and provider settings are configured. Account identity can
+now has Google enabled with the reviewed production callback chain. Account identity can
 follow a user across browsers; favorites, saved queues, and room history remain
 device/room-local and are not yet account-synchronized. Payments are not
 implemented. See `memory.md` for verification and `build-phases.md` for the
@@ -158,10 +162,11 @@ move between the small set of display actions, Enter selects, and Back exits
 fullscreen where the browser reports the key. It shares room state but does not
 use mobile navigation or implicitly receive host authority.
 
-### Later native app
+### Native app
 
-The installed iOS/Android app becomes the personal host/guest interface after
-the web MVP. It will use native camera, account recovery, microphone, and store
+The installed iOS/Android app is now in Native N1 foundation work and becomes
+the personal host/guest interface after native parity. It will use native
+camera, account recovery, microphone, and store
 purchase capabilities where approved. The web display remains a separate,
 low-privilege playback surface. For the web MVP, Start session directly
 provisions the current browser as the display; a temporary host-generated code
@@ -233,8 +238,10 @@ entitlement rules through authenticated APIs, not browser cookies. A future
 web display will mint an expiring one-use QR claim; an authenticated host app
 scans and confirms it, and the backend binds only display authority to the
 room. App identity, display pairing, and purchase identity must remain
-separate. The native framework and account migration strategy are not chosen
-until the N1 discovery gate.
+separate. The chosen foundation is Expo SDK 58 with React Native and Expo
+Router. Native Supabase identity uses a separate securely persisted mobile
+session and never promotes anonymous browser cookies into app credentials.
+Versioned authenticated room APIs remain the next N1 slice.
 
 ## Initial data model direction
 

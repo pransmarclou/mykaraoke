@@ -102,13 +102,22 @@ for Microphone Studio. CSP remains a separate reviewed slice because the
 pre-paint theme bootstrap, YouTube IFrame API, image host, and Supabase Realtime
 connections need an explicit nonce and origin design.
 
-The future native track will reuse server-authoritative domain rules through
+Native N1 now includes a separate Expo SDK 58 / React Native application under
+`apps/mobile`. Expo Router owns native navigation. Hosted Supabase Auth sessions
+are persisted with a chunked Expo SecureStore adapter on iOS/Android; Google
+OAuth returns through the `mykaraoke://auth/callback` deep link. The mobile app
+contains only the project URL and publishable/anon key. Anonymous web cookies,
+database credentials, service-role keys, and OAuth client secrets never become
+mobile credentials.
+
+The remaining native track will reuse server-authoritative domain rules through
 authenticated APIs. Its big-screen handoff differs from today's pairing:
 the web display creates a single-use expiring QR claim, an authenticated host
 app scans and confirms it, and the backend grants only display authority to
 the browser. Native purchase identity and entitlements remain separate from
 both the public room code and the display session. None of that native flow
-is implemented in the web MVP.
+is implemented in the web MVP. Native room endpoints and billing are not yet
+implemented in the N1 foundation.
 
 Migrations live in `supabase/migrations/`. The `rooms`, `room_settings`,
 `room_sessions`, `room_creation_limits`, `room_members`, `room_presence`, and

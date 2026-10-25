@@ -32,11 +32,16 @@ the dedicated hosted-test reaction journey, and real microphone hardware
 verification remain pending; payments are planned in [the functional build
 phases](Docs/build-phases.md).
 
-Delivery order: finish a usable browser MVP for phones, laptops, and supported
-TV browsers first. Later, installed iOS/Android apps become the main personal
+Delivery order remains a usable browser MVP for phones, laptops, and supported
+TV browsers, followed by installed iOS/Android apps as the main personal
 party interface, with a QR shown on the web big screen for the app to scan.
 Native subscriptions come after the app and screen handoff work; no app
 download or payment is required in the current web MVP.
+
+The owner-directed Native N1 foundation now lives in `apps/mobile`: an Expo SDK
+58 / React Native app with MyKaraoke branding, secure persisted Supabase account
+sessions, and Google OAuth deep-link handling. Native room controls and billing
+are not implemented yet. See `apps/mobile/README.md` for setup and verification.
 
 Planned Native N4 monetization is not implemented yet. Free starts with 10
 qualifying song credits, and a user may explicitly choose a Google rewarded ad
